@@ -38,9 +38,14 @@ namespace Sandbox
                     _acceleration = Vector2.Zero;
                 }
 
-                public void Accelerate(Vector2 accel)
+                public void AddAcceleration(Vector2 accel)
                 {
                     _acceleration += accel;
+                }
+
+                public void AddForce(Vector2 force)
+                {
+                    _position_old = _position_old - force;
                 }
 
                 public void Collide(VerletVertex otherVerletVertex)
@@ -92,7 +97,7 @@ namespace Sandbox
                 public List<VerletVertex> _verletVertices;
                 public List<VerletEdge> _verletEdges;
                 public Vector2 _gravity = new Vector2(0, 100);
-                public float _boundaryRadius = 200;
+                public float _boundaryRadius = 50;
                 public uint _subStepsCount = 4;
 
                 public VerletSolver()
@@ -115,7 +120,7 @@ namespace Sandbox
                     float subDeltaTime = deltaTime / _subStepsCount;
                     for (int i = 0; i < _subStepsCount; i++)
                     {
-                        SolveGravity();
+                        ApplyCenterGravity();
                         SolveBoundaries();
                         SolveJoints();
                         SolveCollisions();
@@ -123,10 +128,25 @@ namespace Sandbox
                     }
                 }
 
-                void SolveGravity()
+                void ApplyAcceleration(Vector2 accel)
                 {
                     for (int i = 0; i < _verletVertices.Count; i++)
-                        _verletVertices[i].Accelerate(_gravity);
+                        _verletVertices[i].AddAcceleration(accel);
+                }
+
+                void ApplyCenterGravity()
+                {
+                    const float gravityForce = 9.81f;
+                    const float gravityDensity = 5520;
+                    for (int i = 0; i < _verletVertices.Count; i++)
+                    {
+                        VerletVertex verletVertex = _verletVertices[i];
+                        Vector2 toCenterVector = Vector2.Zero - verletVertex._position;
+                        float toCenterLength = toCenterVector.Length();
+                        Vector2 toCenterDireciton = toCenterVector / toCenterLength;
+                        Vector2 force = (verletVertex._mass * toCenterDireciton * gravityForce * _boundaryRadius * gravityDensity) / (toCenterLength * toCenterLength);
+                        verletVertex.AddAcceleration(force);
+                    }
                 }
 
                 void SolveBoundaries()
@@ -135,13 +155,14 @@ namespace Sandbox
                     {
                         float positionLength = _verletVertices[i]._position.Length();
                         Vector2 positionDirection = _verletVertices[i]._position / positionLength;
-                        float difference = (positionLength + _verletVertices[i]._radius) - _boundaryRadius;
-                        if (difference > 0)
+                        float difference = (positionLength - _verletVertices[i]._radius) - _boundaryRadius;
+                        if (difference < 0)
                             _verletVertices[i]._position -= positionDirection * difference;
                     }
                 }
 
                 // O(n²)
+                // TODO: quadtree
                 void SolveCollisions()
                 {
                     for (int i = 0; i < _verletVertices.Count; i++)
@@ -175,11 +196,11 @@ namespace Sandbox
                 int screenWidth = 800;
                 int screenHeight = 600;
                 Vector2 screenCenter = new Vector2(screenWidth, screenHeight) / 2;
-                double targetFPS = 60;
+                double targetFPS = 120;
 
                 Camera2D camera2D = new Camera2D(screenCenter, Vector2.Zero, 0, 1);
                 VerletSolver verletSolver = new VerletSolver();
-                const int linkSize = 10;
+                const int linkSize = 1;
 
                 Raylib.InitWindow(screenWidth, screenHeight, "Verlet");
                 Raylib.SetTargetFPS((int)targetFPS);
@@ -196,12 +217,13 @@ namespace Sandbox
                     if (Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT))
                     {
                         float randMass = 1;
-                        float randRadius = Raylib.GetRandomValue(1, 20);
+                        float randRadius = Raylib.GetRandomValue(1, 5);
                         VerletVertex[] vertices = new VerletVertex[linkSize];
                         VerletEdge[] edges = new VerletEdge[linkSize];
                         for (int i = 0; i < vertices.Length; i++)
                         {
                             vertices[i] = new VerletVertex(mousePos + new Vector2(1, 0) * randRadius * i, randMass * randRadius, randRadius);
+                            vertices[i].AddForce(new Vector2(Raylib.GetRandomValue(-1, 1), Raylib.GetRandomValue(-1, 1)));
                             verletSolver._verletVertices.Add(vertices[i]);
                         }
                         for (int i = 0; i < vertices.Length; i++)
