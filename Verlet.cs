@@ -6,6 +6,7 @@ namespace Sandbox
 {
     public static partial class Programs
     {
+        // following pezza's work tutorial
         public class Verlet
         {
             public class VerletVertex
