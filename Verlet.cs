@@ -2,6 +2,14 @@ using System.Collections.Generic;
 using System.Numerics;
 using Raylib_cs;
 
+/*
+TODO:
+    - verlet grid
+    - quadtree
+    - box shape
+    - capsule shape
+*/
+
 namespace Sandbox
 {
     public static partial class Programs
@@ -74,7 +82,8 @@ namespace Sandbox
                 {
                     this._verletVertex0 = verletVertex0;
                     this._verletVertex1 = verletVertex1;
-                    this._distance = Vector2.Distance(verletVertex0._position, verletVertex1._position) + (verletVertex0._radius + verletVertex1._radius) / 2 + float.Epsilon;
+                    // this._distance = Vector2.Distance(verletVertex0._position, verletVertex1._position) + (verletVertex0._radius + verletVertex1._radius) / 2 + float.Epsilon;
+                    this._distance = (verletVertex0._radius + verletVertex1._radius) + float.Epsilon;
                 }
 
                 public void Render()
@@ -201,7 +210,6 @@ namespace Sandbox
 
                 Camera2D camera2D = new Camera2D(screenCenter, Vector2.Zero, 0, 1);
                 VerletSolver verletSolver = new VerletSolver();
-                const int linkSize = 1;
 
                 Raylib.InitWindow(screenWidth, screenHeight, "Verlet");
                 Raylib.SetTargetFPS((int)targetFPS);
@@ -217,6 +225,7 @@ namespace Sandbox
                     // create Verlet
                     if (Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT))
                     {
+                        const int linkSize = 20;
                         float randMass = 1;
                         float randRadius = Raylib.GetRandomValue(1, 5);
                         VerletVertex[] vertices = new VerletVertex[linkSize];
@@ -232,6 +241,11 @@ namespace Sandbox
                             if (i < vertices.Length - 1)
                             {
                                 edges[i] = new VerletEdge(vertices[i], vertices[i + 1]);
+                                verletSolver._verletEdges.Add(edges[i]);
+                            }
+                            else
+                            {
+                                edges[i] = new VerletEdge(vertices[i], vertices[0]);
                                 verletSolver._verletEdges.Add(edges[i]);
                             }
                         }
