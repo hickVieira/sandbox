@@ -4,7 +4,7 @@ using Raylib_cs;
 
 /*
 TODO:
-    - verlet grid
+    - springy softbody-like joints
     - quadtree
     - box shape
     - capsule shape
@@ -82,7 +82,6 @@ namespace Sandbox
                 {
                     this._verletVertex0 = verletVertex0;
                     this._verletVertex1 = verletVertex1;
-                    // this._distance = Vector2.Distance(verletVertex0._position, verletVertex1._position) + (verletVertex0._radius + verletVertex1._radius) / 2 + float.Epsilon;
                     this._distance = (verletVertex0._radius + verletVertex1._radius) + float.Epsilon;
                 }
 
@@ -106,9 +105,12 @@ namespace Sandbox
             {
                 public List<VerletVertex> _verletVertices;
                 public List<VerletEdge> _verletEdges;
-                public Vector2 _gravity = new Vector2(0, 100);
-                public float _boundaryRadius = 50;
-                public uint _subStepsCount = 4;
+
+                readonly Vector2 _gravity = new Vector2(0, 100);
+                const uint _subStepsCount = 4;
+                const float _boundaryRadius = 50;
+                const float _gravityForce = 9.81f;
+                const float _gravityDensity = 5520;
 
                 public VerletSolver()
                 {
@@ -134,7 +136,7 @@ namespace Sandbox
                         SolveBoundaries();
                         SolveJoints();
                         SolveCollisions();
-                        UpdateVerletVertices(subDeltaTime);
+                        UpdateVerlet(subDeltaTime);
                     }
                 }
 
@@ -146,15 +148,13 @@ namespace Sandbox
 
                 void ApplyCenterGravity()
                 {
-                    const float gravityForce = 9.81f;
-                    const float gravityDensity = 5520;
                     for (int i = 0; i < _verletVertices.Count; i++)
                     {
                         VerletVertex verletVertex = _verletVertices[i];
                         Vector2 toCenterVector = Vector2.Zero - verletVertex._position;
                         float toCenterLength = toCenterVector.Length();
                         Vector2 toCenterDireciton = toCenterVector / toCenterLength;
-                        Vector2 force = (verletVertex._mass * toCenterDireciton * gravityForce * _boundaryRadius * gravityDensity) / (toCenterLength * toCenterLength);
+                        Vector2 force = (verletVertex._mass * toCenterDireciton * _gravityForce * _boundaryRadius * _gravityDensity) / (toCenterLength * toCenterLength);
                         verletVertex.AddAcceleration(force);
                     }
                 }
@@ -193,7 +193,7 @@ namespace Sandbox
                         _verletEdges[i].Apply();
                 }
 
-                void UpdateVerletVertices(float deltaTime)
+                void UpdateVerlet(float deltaTime)
                 {
                     for (int i = 0; i < _verletVertices.Count; i++)
                         _verletVertices[i].Update(deltaTime);
@@ -216,39 +216,21 @@ namespace Sandbox
                 while (!Raylib.WindowShouldClose())
                 {
                     float deltaTime = Raylib.GetFrameTime();
+                    Vector2 mouseDelta = Raylib.GetMouseDelta();
 
                     // camera2d
-                    camera2D.zoom += Raylib.GetMouseWheelMove() * 0.01f;
-                    camera2D.zoom = Raylib_cs.Raymath.Clamp(camera2D.zoom, 0, 3);
-                    Vector2 mousePos = Raylib.GetMousePosition() - screenCenter;
+                    camera2D.zoom += Raylib.GetMouseWheelMove() * 0.05f;
+                    camera2D.zoom = Raylib_cs.Raymath.Clamp(camera2D.zoom, 0.1f, 3);
+                    if (Raylib.IsMouseButtonDown(MouseButton.MOUSE_MIDDLE_BUTTON))
+                        camera2D.target -= mouseDelta / camera2D.zoom;
+                    Vector2 mouseScreenPos = Raylib.GetMousePosition();
+                    Vector2 mouseWorldPos = Raylib.GetScreenToWorld2D(mouseScreenPos, camera2D);
 
                     // create Verlet
-                    if (Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT))
+                    if (Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT))
                     {
-                        const int linkSize = 20;
-                        float randMass = 1;
-                        float randRadius = Raylib.GetRandomValue(1, 5);
-                        VerletVertex[] vertices = new VerletVertex[linkSize];
-                        VerletEdge[] edges = new VerletEdge[linkSize];
-                        for (int i = 0; i < vertices.Length; i++)
-                        {
-                            vertices[i] = new VerletVertex(mousePos + new Vector2(1, 0) * randRadius * i, randMass * randRadius, randRadius);
-                            vertices[i].AddForce(new Vector2(Raylib.GetRandomValue(-1, 1), Raylib.GetRandomValue(-1, 1)));
-                            verletSolver._verletVertices.Add(vertices[i]);
-                        }
-                        for (int i = 0; i < vertices.Length; i++)
-                        {
-                            if (i < vertices.Length - 1)
-                            {
-                                edges[i] = new VerletEdge(vertices[i], vertices[i + 1]);
-                                verletSolver._verletEdges.Add(edges[i]);
-                            }
-                            else
-                            {
-                                edges[i] = new VerletEdge(vertices[i], vertices[0]);
-                                verletSolver._verletEdges.Add(edges[i]);
-                            }
-                        }
+                        // CreateStrip(verletSolver, mouseWorldPos, mouseDelta);
+                        CreateGrid(verletSolver, mouseWorldPos, mouseDelta);
                     }
 
                     // render
@@ -266,6 +248,69 @@ namespace Sandbox
                     Raylib.EndDrawing();
                 }
                 Raylib.CloseWindow();
+            }
+
+            void CreateStrip(VerletSolver solver, Vector2 positionWS, Vector2 force)
+            {
+                const int linkSize = 20;
+                float randMass = 1;
+                float randRadius = Raylib.GetRandomValue(1, 5);
+                VerletVertex[] vertices = new VerletVertex[linkSize];
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    vertices[i] = new VerletVertex(positionWS + new Vector2(2, 0) * randRadius * i, randMass * randRadius, randRadius);
+                    vertices[i].AddForce(force);
+                    solver._verletVertices.Add(vertices[i]);
+                }
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    if (i < vertices.Length - 1)
+                    {
+                        VerletEdge edge = new VerletEdge(vertices[i], vertices[i + 1]);
+                        solver._verletEdges.Add(edge);
+                    }
+                    // else
+                    // {
+                    //     VerletEdge edge = new VerletEdge(vertices[vertices.Length - 1], vertices[0]);
+                    //     solver._verletEdges.Add(edge);
+                    // }
+                }
+            }
+
+            void CreateGrid(VerletSolver solver, Vector2 positionWS, Vector2 force)
+            {
+                const int gridSizeX = 5;
+                const int gridSizeY = 5;
+                VerletVertex[,] vertices = new VerletVertex[gridSizeX, gridSizeY];
+
+                for (int x = 0; x < gridSizeX; x++)
+                    for (int y = 0; y < gridSizeY; y++)
+                    {
+                        VerletVertex vertex = new VerletVertex(positionWS + new Vector2(x, y) * 4, 1, 2);
+                        vertex.AddForce(force);
+                        vertices[x, y] = vertex;
+                        solver._verletVertices.Add(vertex);
+                    }
+
+                for (int x = 0; x < gridSizeX; x++)
+                    for (int y = 0; y < gridSizeX; y++)
+                    {
+                        VerletVertex vertex = vertices[x, y];
+
+                        int downIndex = y + 1;
+                        if (downIndex > -1 && downIndex < gridSizeY)
+                        {
+                            VerletEdge edge = new VerletEdge(vertex, vertices[x, downIndex]);
+                            solver._verletEdges.Add(edge);
+                        }
+
+                        int rightIndex = x + 1;
+                        if (rightIndex > -1 && rightIndex < gridSizeX)
+                        {
+                            VerletEdge edge = new VerletEdge(vertex, vertices[rightIndex, y]);
+                            solver._verletEdges.Add(edge);
+                        }
+                    }
             }
         }
     }
