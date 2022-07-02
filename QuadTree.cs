@@ -5,169 +5,225 @@ using Raylib_cs;
 
 namespace Sandbox
 {
+    public struct AABB
+    {
+        public Vector2 _center;
+        public Vector2 _extents;
+
+        public Vector2 min { get => _center - _extents; }
+        public Vector2 max { get => _center + _extents; }
+        public float width { get => _extents.X * 2; }
+        public float height { get => _extents.Y * 2; }
+
+        public AABB(Vector2 center, Vector2 size)
+        {
+            this._center = center;
+            this._extents = size / 2;
+        }
+
+        public bool Contains(Vector2 position)
+        {
+            bool containsX = (position.X > _center.X - _extents.X) && (position.X < _center.X + _extents.X);
+            bool containsY = (position.Y > _center.Y - _extents.Y) && (position.Y < _center.Y + _extents.Y);
+            return containsX && containsY;
+        }
+
+        public bool Contains(AABB aabb)
+        {
+            Vector2 thisMin = min;
+            Vector2 otherMin = aabb.min;
+
+            return (thisMin.X < otherMin.X + aabb.width &&
+                    thisMin.X + width > otherMin.X &&
+                    thisMin.Y < otherMin.Y + aabb.height &&
+                    thisMin.Y + height > otherMin.Y);
+        }
+
+        public void Draw(Color color)
+        {
+            Vector2 position = min;
+            Raylib.DrawRectangleLines((int)position.X, (int)position.Y, (int)width, (int)height, color);
+        }
+    }
+
     [System.Serializable]
     public class QuadTree<T>
     {
         [System.Serializable]
-        public class Node
+        public struct Node
         {
-            public int _index;
-            public int _parentIndex;
-            public int[] _childrenIndices;
-            public uint _depth;
-            public Rectangle _rect;
-            public List<T> _items;
+            public int _childrenIndex = -1;
+            public byte _depth = 0;
 
-            public bool IsRoot { get => _parentIndex < 0; }
-            public bool IsLeaf { get => _depth == 0; }
-            public bool HasChildren { get => _childrenIndices != null; }
-
-            public bool Contains(Vector2 position)
+            public Node(int childrenIndex, byte depth)
             {
-                bool containsX = (position.X > _rect.x) && (position.X < _rect.x + _rect.width);
-                bool containsY = (position.Y > _rect.y) && (position.Y < _rect.y + _rect.width);
-                return containsX && containsY;
+                this._childrenIndex = childrenIndex;
+                this._depth = depth;
             }
-
-            public void Draw(Color color)
-            {
-                Vector2 cellPosition = new Vector2(_rect.x, _rect.y);
-                Vector2 cellSize = new Vector2(_rect.width, _rect.height);
-                Raylib.DrawRectangleLines((int)cellPosition.X, (int)cellPosition.Y, (int)cellSize.X, (int)cellSize.Y, color);
-            }
-
         }
         private List<Node> _nodes;
+        public List<List<T>> _nodesItems;
+        public List<AABB> _nodesAABBs;
+        private Vector2 _maxSize;
         private uint _maxDepth;
-
-        public List<Node> Nodes { get => _nodes; }
-        public uint MaxDepth { get => _maxDepth; }
+        private uint[] _insertBuffer;
+        private uint _insertBufferCount;
 
         public void Draw(Color color)
         {
-            if (_nodes != null)
-                for (int i = 0; i < _nodes.Count; i++)
-                    _nodes[i].Draw(color);
+            if (_nodesAABBs == null)
+                return;
+            for (int i = 0; i < _nodesAABBs.Count; i++)
+                _nodesAABBs[i].Draw(color);
         }
 
-        public QuadTree(Vector2 center, float size, uint depth)
+        public QuadTree(Vector2 center, Vector2 size, byte depth)
         {
+            _maxSize = size;
             _maxDepth = depth;
             _nodes = new List<Node>();
-            _nodes.Add(CreateNode(0, -1, center, size, depth));
+            _nodesItems = new List<List<T>>();
+            _nodesAABBs = new List<AABB>();
+            int subdivides = depth + 1;
+            _insertBuffer = new uint[subdivides * subdivides];
+            CreateNode(center, size, depth);
         }
 
-        public void Add(T obj, Vector2 position)
+        public void Insert(T obj, Vector2 position)
         {
-            Node currentNode = _nodes[0];
-            while (currentNode != null)
-            {
-            start:
-                if (currentNode.Contains(position))
-                {
-                    if (currentNode._depth == 0)
-                    {
-                        currentNode._items.Add(obj);
-                        return;
-                    }
+            Insert(obj, position, 0);
+        }
 
-                    if (!currentNode.HasChildren)
-                        SplitNode(currentNode);
-                        
-                    for (int i = 0; i < 4; i++)
-                    {
-                        Node childNode = _nodes[currentNode._childrenIndices[i]];
-                        if (childNode.Contains(position))
-                        {
-                            currentNode = childNode;
-                            goto start;
-                        }
-                    }
-                    return;
-                }
-                else
+        void Insert(T obj, Vector2 position, int nodeIndex)
+        {
+            AABB currentNodeAABB = _nodesAABBs[nodeIndex];
+            if (currentNodeAABB.Contains(position))
+            {
+                if (_nodes[nodeIndex]._depth == 0)
                 {
+                    _nodesItems[nodeIndex] ??= new List<T>();
+                    _nodesItems[nodeIndex].Add(obj);
                     return;
                 }
+
+                if (_nodes[nodeIndex]._childrenIndex == -1)
+                    SplitNode(nodeIndex);
+
+                Insert(obj, position, _nodes[nodeIndex]._childrenIndex + 0);
+                Insert(obj, position, _nodes[nodeIndex]._childrenIndex + 1);
+                Insert(obj, position, _nodes[nodeIndex]._childrenIndex + 2);
+                Insert(obj, position, _nodes[nodeIndex]._childrenIndex + 3);
             }
         }
 
-        Node CreateNode(int nodeIndex, int parentIndex, Vector2 center, float size, uint depth)
+        public void Insert(T obj, AABB aabb)
         {
-            Vector2 rectPos = center - Vector2.One * size / 2;
-            Vector2 rectSize = Vector2.One * size;
-            Node node = new Node()
+            Insert(obj, aabb, 0);
+        }
+
+        void Insert(T obj, AABB aabb, int nodeIndex)
+        {
+            AABB currentNodeAABB = _nodesAABBs[nodeIndex];
+            if (currentNodeAABB.Contains(aabb))
             {
-                _index = nodeIndex,
-                _parentIndex = parentIndex,
-                _childrenIndices = null,
-                _depth = depth,
-                _rect = new Rectangle(rectPos.X, rectPos.Y, rectSize.X, rectSize.Y),
-                _items = depth == 0 ? new List<T>() : null,
-            };
+                if (_nodes[nodeIndex]._depth == 0)
+                {
+                    _nodesItems[nodeIndex] ??= new List<T>();
+                    _nodesItems[nodeIndex].Add(obj);
+                    return;
+                }
+
+                if (_nodes[nodeIndex]._childrenIndex == -1)
+                    SplitNode(nodeIndex);
+
+                Insert(obj, aabb, _nodes[nodeIndex]._childrenIndex + 0);
+                Insert(obj, aabb, _nodes[nodeIndex]._childrenIndex + 1);
+                Insert(obj, aabb, _nodes[nodeIndex]._childrenIndex + 2);
+                Insert(obj, aabb, _nodes[nodeIndex]._childrenIndex + 3);
+            }
+        }
+
+        Node CreateNode(Vector2 center, Vector2 size, byte depth)
+        {
+            Node node = new Node(-1, depth);
             _nodes.Add(node);
+            _nodesItems.Add(null);
+            _nodesAABBs.Add(new AABB(center, size));
             return node;
         }
 
-        Node CreateNodeRecursive(int nodeIndex, int parentIndex, Vector2 center, float size, int depth)
+        Node CreateNodeRecursive(int nodeIndex, Vector2 center, Vector2 size, int depth)
         {
-            Node node = CreateNode(nodeIndex, parentIndex, center, size, (uint)depth);
+            Node node = CreateNode(center, size, (byte)depth);
             if (depth > -1)
             {
                 size /= 2;
                 depth--;
-                node._childrenIndices = new int[4];
-                node._childrenIndices[0] = CreateNodeRecursive(_nodes.Count, parentIndex + 1, center + new Vector2(0.5f, 0.5f) * size, size, depth)._index;
-                node._childrenIndices[1] = CreateNodeRecursive(_nodes.Count, parentIndex + 1, center + new Vector2(-0.5f, 0.5f) * size, size, depth)._index;
-                node._childrenIndices[2] = CreateNodeRecursive(_nodes.Count, parentIndex + 1, center + new Vector2(-0.5f, -0.5f) * size, size, depth)._index;
-                node._childrenIndices[3] = CreateNodeRecursive(_nodes.Count, parentIndex + 1, center + new Vector2(0.5f, -0.5f) * size, size, depth)._index;
+                _nodes[nodeIndex] = new Node(_nodes.Count, (byte)depth);
+                CreateNodeRecursive(_nodes.Count, center + new Vector2(0.5f, 0.5f) * size, size, depth);
+                CreateNodeRecursive(_nodes.Count, center + new Vector2(-0.5f, 0.5f) * size, size, depth);
+                CreateNodeRecursive(_nodes.Count, center + new Vector2(-0.5f, -0.5f) * size, size, depth);
+                CreateNodeRecursive(_nodes.Count, center + new Vector2(0.5f, -0.5f) * size, size, depth);
             }
             return node;
         }
 
-        void SplitNode(Node node)
+        void SplitNode(int nodeIndex)
         {
-            Vector2 center = new Vector2(node._rect.x + node._rect.width / 2, node._rect.y + node._rect.height / 2);
+            Node node = _nodes[nodeIndex];
+            AABB aabb = _nodesAABBs[nodeIndex];
+            _nodes[nodeIndex] = new Node(_nodes.Count, node._depth);
 
-            float size = (node._rect.width + node._rect.height) / 4;
-            uint depth = node._depth - 1;
-
-            node._childrenIndices ??= new int[4];
-            node._childrenIndices[0] = CreateNode(_nodes.Count, node._index, center + new Vector2(0.5f, 0.5f) * size, size, depth)._index;
-            node._childrenIndices[1] = CreateNode(_nodes.Count, node._index, center + new Vector2(-0.5f, 0.5f) * size, size, depth)._index;
-            node._childrenIndices[2] = CreateNode(_nodes.Count, node._index, center + new Vector2(-0.5f, -0.5f) * size, size, depth)._index;
-            node._childrenIndices[3] = CreateNode(_nodes.Count, node._index, center + new Vector2(0.5f, -0.5f) * size, size, depth)._index;
-
+            Vector2 center = aabb._center;
+            Vector2 size = aabb._extents; // * 2 / 2 -> we need to divide size by 2, but extents is exactly that
+            byte depth = (byte)(node._depth - 1);
+            CreateNode(center + new Vector2(0.5f, 0.5f) * size, size, depth);
+            CreateNode(center + new Vector2(-0.5f, 0.5f) * size, size, depth);
+            CreateNode(center + new Vector2(-0.5f, -0.5f) * size, size, depth);
+            CreateNode(center + new Vector2(0.5f, -0.5f) * size, size, depth);
         }
 
-        public Node GetNode(int cellIndex)
+        public List<T> GetNodeItems(int nodeIndex)
         {
-            return _nodes[cellIndex];
+            return _nodesItems[nodeIndex];
         }
 
-        public Node GetNode(Vector2 position, uint depth)
+        public AABB GetNodeAABB(int nodeIndex)
         {
-            if (!_nodes[0].Contains(position))
-                return null;
-            return GetNode(_nodes[0], position, Math.Min(_maxDepth, depth));
+            return _nodesAABBs[nodeIndex];
         }
 
-        Node GetNode(Node node, Vector2 position, uint depth)
+        public int GetNodeIndex(Vector2 position, uint depth)
         {
-            if (!node.Contains(position))
-                return null;
+            if (!_nodesAABBs[0].Contains(position))
+                return -1;
+
+            int nodeIndex = GetNodeIndex(0, position, Math.Min(_maxDepth, depth));
+            if (nodeIndex < 0 || nodeIndex >= _nodes.Count)
+                return -1;
+
+            return nodeIndex;
+        }
+
+        int GetNodeIndex(int nodeIndex, Vector2 position, uint depth)
+        {
+            if (!_nodesAABBs[nodeIndex].Contains(position))
+                return -1;
+
+            Node node = _nodes[nodeIndex];
 
             if (node._depth == depth)
-                return node;
+                return nodeIndex;
 
-            if (node._childrenIndices != null && node._childrenIndices.Length > 0)
+            if (node._childrenIndex != -1)
                 for (int i = 0; i < 4; i++)
                 {
-                    Node leafNode = GetNode(_nodes[node._childrenIndices[i]], position, depth);
-                    if (leafNode != null) return leafNode;
+                    int leafNode = GetNodeIndex(node._childrenIndex + i, position, depth);
+                    if (leafNode != -1)
+                        return leafNode;
                 }
 
-            return null;
+            return -1;
         }
     }
 }
