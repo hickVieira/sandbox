@@ -11,13 +11,14 @@ namespace Sandbox
         {
             public class VerletVertex
             {
-                public Vector2 _position;
                 public float _mass;
                 public float _radius;
+                private Vector2 _position;
                 private Vector2 _position_old;
                 private Vector2 _acceleration;
                 private Vector2 _force;
 
+                public Vector2 position { get => _position; }
                 public Vector2 velocity { get => _position - _position_old; }
 
                 public VerletVertex(Vector2 position, float mass, float radius)
@@ -44,6 +45,16 @@ namespace Sandbox
                     _force = Vector2.Zero;
                 }
 
+                public void Displace(Vector2 offset)
+                {
+                    _position += offset;
+                }
+
+                public void Stop()
+                {
+                    _position_old = _position;
+                }
+
                 public void AddAcceleration(Vector2 accel)
                 {
                     _acceleration += accel;
@@ -62,29 +73,15 @@ namespace Sandbox
 
                 public void Collide(VerletVertex otherVerletVertex)
                 {
-                    Vector2 collisionVector = _position - otherVerletVertex._position;
+                    Vector2 collisionVector = _position - otherVerletVertex.position;
                     float collisionLength = collisionVector.Length();
                     float collisionDistance = collisionLength - _radius - otherVerletVertex._radius;
                     if (collisionDistance < 0)
                     {
                         float penetration = System.Math.Abs(collisionDistance);
                         Vector2 normal = collisionVector / collisionLength;
-                        _position += normal * penetration / _mass;
-                        otherVerletVertex._position -= normal * penetration / otherVerletVertex._mass;
-                    }
-                }
-
-                public void Collide(VerletVertex otherVerletVertex, float force)
-                {
-                    Vector2 collisionVector = _position - otherVerletVertex._position;
-                    float collisionLength = collisionVector.Length();
-                    float collisionDistance = collisionLength - _radius - otherVerletVertex._radius;
-                    if (collisionDistance < 0)
-                    {
-                        float penetration = System.Math.Abs(collisionDistance);
-                        Vector2 normal = collisionVector / collisionLength;
-                        AddForce(normal * penetration * force / _mass);
-                        otherVerletVertex.AddForce(-normal * penetration * force / otherVerletVertex._mass);
+                        _position += normal * penetration / (1 + _mass);
+                        otherVerletVertex._position -= normal * penetration / (1 + otherVerletVertex._mass);
                     }
                 }
             }
@@ -101,18 +98,18 @@ namespace Sandbox
                 {
                     this._verletVertex0 = verletVertex0;
                     this._verletVertex1 = verletVertex1;
-                    this._distance = Vector2.Distance(verletVertex0._position, verletVertex1._position) + float.Epsilon;
+                    this._distance = Vector2.Distance(verletVertex0.position, verletVertex1.position) + float.Epsilon;
                     this._breakDistance = _distance + breakDistance + float.Epsilon;
                 }
 
                 public void Render()
                 {
-                    Raylib.DrawLine((int)_verletVertex0._position.X, (int)_verletVertex0._position.Y, (int)_verletVertex1._position.X, (int)_verletVertex1._position.Y, Color.GRAY);
+                    Raylib.DrawLine((int)_verletVertex0.position.X, (int)_verletVertex0.position.Y, (int)_verletVertex1.position.X, (int)_verletVertex1.position.Y, Color.GRAY);
                 }
 
                 public void Apply()
                 {
-                    Vector2 edgeVector = _verletVertex0._position - _verletVertex1._position;
+                    Vector2 edgeVector = _verletVertex0.position - _verletVertex1.position;
                     float edgeLength = edgeVector.Length();
                     float edgeDistance = _distance - edgeLength;
 
@@ -120,13 +117,13 @@ namespace Sandbox
                         _isBroken = true;
 
                     Vector2 normal = edgeVector / edgeLength;
-                    _verletVertex0._position += 0.5f * normal * edgeDistance;
-                    _verletVertex1._position -= 0.5f * normal * edgeDistance;
+                    _verletVertex0.Displace(+0.5f * normal * edgeDistance);
+                    _verletVertex1.Displace(-0.5f * normal * edgeDistance);
                 }
 
                 public void Apply(float springK, float springDampness = 0.01f)
                 {
-                    Vector2 edgeVector = _verletVertex0._position - _verletVertex1._position;
+                    Vector2 edgeVector = _verletVertex0.position - _verletVertex1.position;
                     float edgeLength = edgeVector.Length();
                     float edgeDistance = _distance - edgeLength;
 
@@ -174,7 +171,7 @@ namespace Sandbox
 
                 public void Solve(float deltaTime)
                 {
-                    SolveQuadTree();
+                    SolveQuadTree(); // ideally it should called somewhere before collision solving
                     float subDeltaTime = deltaTime / _subStepsCount;
                     for (int i = 0; i < _subStepsCount; i++)
                     {
@@ -188,10 +185,13 @@ namespace Sandbox
 
                 void SolveQuadTree()
                 {
-                    _quadTree = new QuadTree<VerletVertex>(Vector2.Zero, Vector2.One * 6400, 8);
+                    _quadTree = new QuadTree<VerletVertex>(Vector2.Zero, Vector2.One * 3200, 7);
                     for (int i = 0; i < _verletVertices.Count; i++)
-                        // _quadTree.Insert(_verletVertices[i], _verletVertices[i]._position);
-                        _quadTree.Insert(_verletVertices[i], new AABB(_verletVertices[i]._position, 2 * Vector2.One * _verletVertices[i]._radius));
+                    {
+                        VerletVertex vertex = _verletVertices[i];
+                        Vector2 boundsVector = Vector2.One * (vertex.velocity.Length() + vertex._radius * 4);
+                        _quadTree.Insert(vertex, new AABB(vertex.position, boundsVector));
+                    }
                 }
 
                 void ApplyAcceleration()
@@ -205,7 +205,7 @@ namespace Sandbox
                     // for (int i = 0; i < _verletVertices.Count; i++)
                     // {
                     //     VerletVertex verletVertex = _verletVertices[i];
-                    //     Vector2 toCenterVector = Vector2.Zero - verletVertex._position;
+                    //     Vector2 toCenterVector = Vector2.Zero - verletVertex.position;
                     //     float toCenterLength = toCenterVector.Length();
                     //     Vector2 toCenterDireciton = toCenterVector / toCenterLength;
                     //     Vector2 force = (verletVertex._mass * toCenterDireciton * _gravityForce * _boundaryRadius * _gravityDensity) / (toCenterLength * toCenterLength);
@@ -217,11 +217,11 @@ namespace Sandbox
                 {
                     for (int i = 0; i < _verletVertices.Count; i++)
                     {
-                        float positionLength = _verletVertices[i]._position.Length();
-                        Vector2 positionDirection = _verletVertices[i]._position / positionLength;
+                        float positionLength = _verletVertices[i].position.Length();
+                        Vector2 positionDirection = _verletVertices[i].position / positionLength;
                         float difference = (positionLength + _verletVertices[i]._radius) - _boundaryRadius;
                         if (difference > 0)
-                            _verletVertices[i]._position -= positionDirection * difference;
+                            _verletVertices[i].Displace(-positionDirection * difference);
                     }
                 }
 
@@ -231,7 +231,7 @@ namespace Sandbox
                     {
                         VerletVertex currentVerletVertex = _verletVertices[i];
 
-                        var nodeIndex = _quadTree.GetNodeIndex(currentVerletVertex._position, 0);
+                        var nodeIndex = _quadTree.GetNodeIndex(currentVerletVertex.position, 0);
                         if (nodeIndex == -1) continue;
 
                         List<VerletVertex> nodeItems = _quadTree.GetNodeItems(nodeIndex);
@@ -255,7 +255,7 @@ namespace Sandbox
                         if (edge._isBroken)
                             _verletEdges.RemoveAt(i--);
                         else
-                            edge.Apply(10, 0.05f);
+                            edge.Apply(5, 1f);
                     }
                 }
 
@@ -294,12 +294,12 @@ namespace Sandbox
                     Vector2 mouseWorldPos = Raylib.GetScreenToWorld2D(mouseScreenPos, camera2D);
 
                     // create Verlet
-                    // if (Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT))
-                    if (Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT))
+                    if (Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT))
+                    // if (Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT))
                     {
-                        CreateVerletVertex(verletSolver, mouseWorldPos, mouseDelta);
+                        // CreateVerletVertex(verletSolver, mouseWorldPos, mouseDelta);
                         // CreateStrip(verletSolver, mouseWorldPos, mouseDelta);
-                        // CreateGrid(verletSolver, mouseWorldPos, mouseDelta);
+                        CreateGrid(verletSolver, mouseWorldPos, mouseDelta);
                     }
 
                     if (Raylib.IsKeyPressed(KeyboardKey.KEY_R))
@@ -353,14 +353,15 @@ namespace Sandbox
 
             void CreateGrid(VerletSolver solver, Vector2 positionWS, Vector2 force)
             {
-                const int gridSizeX = 10;
-                const int gridSizeY = 10;
+                const float ballSize = 4;
+                const int gridSizeX = 5;
+                const int gridSizeY = 5;
                 VerletVertex[,] vertices = new VerletVertex[gridSizeX, gridSizeY];
 
                 for (int x = 0; x < gridSizeX; x++)
                     for (int y = 0; y < gridSizeY; y++)
                     {
-                        VerletVertex vertex = new VerletVertex(positionWS + 40 * new Vector2(x, y), 1, 10);
+                        VerletVertex vertex = new VerletVertex(positionWS + 4 * ballSize * new Vector2(x, y), 1, ballSize);
                         vertex.AddForce(force * _mouseDeltaForce);
                         vertices[x, y] = vertex;
                         solver._verletVertices.Add(vertex);
