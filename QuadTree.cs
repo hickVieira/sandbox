@@ -5,47 +5,6 @@ using Raylib_cs;
 
 namespace Sandbox
 {
-    public struct AABB
-    {
-        public Vector2 _center;
-        public Vector2 _extents;
-
-        public Vector2 min { get => _center - _extents; }
-        public Vector2 max { get => _center + _extents; }
-        public float width { get => _extents.X * 2; }
-        public float height { get => _extents.Y * 2; }
-
-        public AABB(Vector2 center, Vector2 size)
-        {
-            this._center = center;
-            this._extents = size / 2;
-        }
-
-        public bool Contains(Vector2 position)
-        {
-            bool containsX = (position.X > _center.X - _extents.X) && (position.X < _center.X + _extents.X);
-            bool containsY = (position.Y > _center.Y - _extents.Y) && (position.Y < _center.Y + _extents.Y);
-            return containsX && containsY;
-        }
-
-        public bool Contains(AABB aabb)
-        {
-            Vector2 thisMin = min;
-            Vector2 otherMin = aabb.min;
-
-            return (thisMin.X < otherMin.X + aabb.width &&
-                    thisMin.X + width > otherMin.X &&
-                    thisMin.Y < otherMin.Y + aabb.height &&
-                    thisMin.Y + height > otherMin.Y);
-        }
-
-        public void Draw(Color color)
-        {
-            Vector2 position = min;
-            Raylib.DrawRectangleLines((int)position.X, (int)position.Y, (int)width, (int)height, color);
-        }
-    }
-
     [System.Serializable]
     public class QuadTree<T>
     {
@@ -63,7 +22,7 @@ namespace Sandbox
         }
         private List<Node> _nodes;
         public List<List<T>> _nodesItems;
-        public List<AABB> _nodesAABBs;
+        public List<AABB2> _nodesAABBs;
         private Vector2 _maxSize;
         private uint _maxDepth;
         private uint[] _insertBuffer;
@@ -83,7 +42,7 @@ namespace Sandbox
             _maxDepth = depth;
             _nodes = new List<Node>();
             _nodesItems = new List<List<T>>();
-            _nodesAABBs = new List<AABB>();
+            _nodesAABBs = new List<AABB2>();
             int subdivides = depth + 1;
             _insertBuffer = new uint[subdivides * subdivides];
             CreateNode(center, size, depth);
@@ -96,7 +55,7 @@ namespace Sandbox
 
         void Insert(T obj, Vector2 position, int nodeIndex)
         {
-            AABB currentNodeAABB = _nodesAABBs[nodeIndex];
+            AABB2 currentNodeAABB = _nodesAABBs[nodeIndex];
             if (currentNodeAABB.Contains(position))
             {
                 if (_nodes[nodeIndex]._depth == 0)
@@ -116,14 +75,14 @@ namespace Sandbox
             }
         }
 
-        public void Insert(T obj, AABB aabb)
+        public void Insert(T obj, AABB2 aabb)
         {
             Insert(obj, aabb, 0);
         }
 
-        void Insert(T obj, AABB aabb, int nodeIndex)
+        void Insert(T obj, AABB2 aabb, int nodeIndex)
         {
-            AABB currentNodeAABB = _nodesAABBs[nodeIndex];
+            AABB2 currentNodeAABB = _nodesAABBs[nodeIndex];
             if (currentNodeAABB.Contains(aabb))
             {
                 if (_nodes[nodeIndex]._depth == 0)
@@ -148,7 +107,7 @@ namespace Sandbox
             Node node = new Node(-1, depth);
             _nodes.Add(node);
             _nodesItems.Add(null);
-            _nodesAABBs.Add(new AABB(center, size));
+            _nodesAABBs.Add(new AABB2(center, size));
             return node;
         }
 
@@ -171,7 +130,7 @@ namespace Sandbox
         void SplitNode(int nodeIndex)
         {
             Node node = _nodes[nodeIndex];
-            AABB aabb = _nodesAABBs[nodeIndex];
+            AABB2 aabb = _nodesAABBs[nodeIndex];
             _nodes[nodeIndex] = new Node(_nodes.Count, node._depth);
 
             Vector2 center = aabb._center;
@@ -188,7 +147,7 @@ namespace Sandbox
             return _nodesItems[nodeIndex];
         }
 
-        public AABB GetNodeAABB(int nodeIndex)
+        public AABB2 GetNodeAABB(int nodeIndex)
         {
             return _nodesAABBs[nodeIndex];
         }

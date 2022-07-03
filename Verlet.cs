@@ -142,7 +142,7 @@ namespace Sandbox
                 public QuadTree<VerletVertex> _quadTree;
 
                 const uint _subStepsCount = 2;
-                const float _boundaryRadius = 500;
+                const float _boundaryRadius = 1000;
                 // const float _gravityForce = 9.81f * 5520;
                 const float _gravityForce = 9.81f * 10;
 
@@ -159,7 +159,7 @@ namespace Sandbox
                         _verletVertices[i].Render(Color.BLACK);
                     for (int i = 0; i < _verletEdges.Count; i++)
                         _verletEdges[i].Render();
-                    _quadTree.Draw(Color.LIME);
+                    // _quadTree.Draw(Color.LIME);
                 }
 
                 public void Solve(float deltaTime)
@@ -168,7 +168,7 @@ namespace Sandbox
                     float subDeltaTime = deltaTime / _subStepsCount;
                     for (int i = 0; i < _subStepsCount; i++)
                     {
-                        ApplyAcceleration();
+                        // ApplyAcceleration();
                         SolveBoundaries();
                         SolveEdges();
                         SolveCollisions();
@@ -184,7 +184,7 @@ namespace Sandbox
                         VerletVertex vertex = _verletVertices[i];
                         Vector2 vertexVelocity = vertex.velocity;
                         Vector2 boundsVector = vertex._radius * new Vector2(2, 2);
-                        _quadTree.Insert(vertex, new AABB(vertex.position + vertex.velocity, boundsVector));
+                        _quadTree.Insert(vertex, new AABB2(vertex.position + vertex.velocity, boundsVector));
                     }
                 }
 
@@ -294,13 +294,24 @@ namespace Sandbox
                     // if (Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT))
                     if (Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT))
                     {
-                        // CreateVerletVertex(verletSolver, mouseWorldPos, mouseDelta);
+                        CreateVerletVertex(verletSolver, mouseWorldPos, mouseDelta);
                         // CreateStrip(verletSolver, mouseWorldPos, mouseDelta);
-                        CreateGrid(verletSolver, mouseWorldPos, mouseDelta);
+                        // CreateGrid(verletSolver, mouseWorldPos, mouseDelta);
                     }
 
                     if (Raylib.IsKeyPressed(KeyboardKey.KEY_R))
                         verletSolver = new VerletSolver();
+
+                    List<Delaunay.Triangle> triangles = new List<Delaunay.Triangle>();
+                    List<decimal2> vertices = new List<decimal2>();
+                    for (int i = 0; i < verletSolver._verletVertices.Count; i++)
+                    {
+                        Vector2 vec = verletSolver._verletVertices[i].position;
+                        if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                            continue;
+                        vertices.Add(vec);
+                    }
+                    triangles = Delaunay.BowyerWatson2D(vertices, 10000m);
 
                     // render
                     Raylib.BeginDrawing();
@@ -309,6 +320,11 @@ namespace Sandbox
                     Raylib.BeginMode2D(camera2D);
                     verletSolver.Solve(deltaTime);
                     verletSolver.Render();
+                    for (int i = 0; i < triangles.Count; i++)
+                    {
+                        var triangle = triangles[i];
+                        Raylib.DrawTriangleLines((Vector2)vertices[triangle._vIndex0], (Vector2)vertices[triangle._vIndex1], (Vector2)vertices[triangle._vIndex2], Color.BLUE);
+                    }
                     Raylib.DrawLine(short.MinValue, 0, short.MaxValue, 0, Color.RED);
                     Raylib.DrawLine(0, short.MinValue, 0, short.MaxValue, Color.GREEN);
                     Raylib.EndMode2D();
@@ -363,6 +379,7 @@ namespace Sandbox
                         vertices[x, y] = vertex;
                         solver._verletVertices.Add(vertex);
                     }
+                return;
                 for (int x = 0; x < gridSizeX; x++)
                     for (int y = 0; y < gridSizeX; y++)
                     {

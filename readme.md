@@ -3,7 +3,6 @@
     - Delaunay triangulation (port it from old project)
     - 3D
 
-
 ## Showcase
 ![planet](planet.gif)
 ![softbody](softbody.gif)
