@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Raylib_cs;
@@ -6,6 +7,12 @@ namespace Sandbox
 {
     public static partial class Programs
     {
+        public struct Point : DelaunatorSharp.IPoint
+        {
+            public double X { get; set; }
+            public double Y { get; set; }
+        }
+
         // following pezza's work tutorial
         public class Verlet
         {
@@ -72,7 +79,7 @@ namespace Sandbox
                     float collisionDistance = collisionLength - _radius - otherVerletVertex._radius;
                     if (collisionDistance < 0)
                     {
-                        float penetration = System.Math.Abs(collisionDistance);
+                        float penetration = Math.Abs(collisionDistance);
                         Vector2 normal = collisionVector / collisionLength;
                         _position += force * normal * penetration / (1 + _mass);
                         otherVerletVertex._position -= force * normal * penetration / (1 + otherVerletVertex._mass);
@@ -141,7 +148,6 @@ namespace Sandbox
                 public List<VerletEdge> _verletEdges;
                 public QuadTree<VerletVertex> _quadTree;
 
-                const uint _subStepsCount = 2;
                 const float _boundaryRadius = 1000;
                 // const float _gravityForce = 9.81f * 5520;
                 const float _gravityForce = 9.81f * 10;
@@ -159,32 +165,42 @@ namespace Sandbox
                         _verletVertices[i].Render(Color.BLACK);
                     for (int i = 0; i < _verletEdges.Count; i++)
                         _verletEdges[i].Render();
-                    // _quadTree.Draw(Color.LIME);
+                    _quadTree?.Draw(Color.LIME);
                 }
 
                 public void Solve(float deltaTime)
                 {
-                    SolveQuadTree(); // ideally it should called somewhere before collision solving
-                    float subDeltaTime = deltaTime / _subStepsCount;
-                    for (int i = 0; i < _subStepsCount; i++)
+                    // SolveQuadTree(); // ideally it should called somewhere before collision solving
+                    uint subStepsCount = (uint)(1 + 0.05f * (_verletVertices.Count + _verletEdges.Count * 0.25f));
+                    float subDeltaTime = deltaTime / subStepsCount;
+                    // for (int i = 0; i < subStepsCount; i++)
                     {
                         // ApplyAcceleration();
-                        SolveBoundaries();
-                        SolveEdges();
-                        SolveCollisions();
-                        UpdateVerlet(subDeltaTime);
+                        // SolveBoundaries();
+                        // SolveEdges();
+                        // SolveCollisions();
+                        // UpdateVerlet(subDeltaTime);
                     }
                 }
 
                 void SolveQuadTree()
                 {
-                    _quadTree = new QuadTree<VerletVertex>(Vector2.Zero, Vector2.One * 3200, 8);
+                    float minRadius = 10;
                     for (int i = 0; i < _verletVertices.Count; i++)
                     {
                         VerletVertex vertex = _verletVertices[i];
-                        Vector2 vertexVelocity = vertex.velocity;
-                        Vector2 boundsVector = vertex._radius * new Vector2(2, 2);
-                        _quadTree.Insert(vertex, new AABB2(vertex.position + vertex.velocity, boundsVector));
+                        minRadius = Math.Min(minRadius, vertex._radius);
+                    }
+
+                    Vector2 size = 3200 * Vector2.One;
+                    byte depth = 6;
+                    _quadTree = new QuadTree<VerletVertex>(Vector2.Zero, size, depth);
+
+                    for (int i = 0; i < _verletVertices.Count; i++)
+                    {
+                        VerletVertex vertex = _verletVertices[i];
+                        Vector2 boundsVector = Vector2.One * vertex._radius * 3.3333f;
+                        _quadTree.Insert(vertex, new AABB2(vertex.position, boundsVector));
                     }
                 }
 
@@ -217,7 +233,7 @@ namespace Sandbox
                         if (difference > 0)
                         {
                             _verletVertices[i].Displace(-positionDirection * difference);
-                            _verletVertices[i].Stop();
+                            // _verletVertices[i].Stop();
                         }
                     }
                 }
@@ -294,24 +310,64 @@ namespace Sandbox
                     // if (Raylib.IsMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT))
                     if (Raylib.IsMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT))
                     {
-                        CreateVerletVertex(verletSolver, mouseWorldPos, mouseDelta);
+                        // CreateVerletVertex(verletSolver, mouseWorldPos, mouseDelta);
                         // CreateStrip(verletSolver, mouseWorldPos, mouseDelta);
-                        // CreateGrid(verletSolver, mouseWorldPos, mouseDelta);
+                        CreateGrid(verletSolver, mouseWorldPos, mouseDelta);
                     }
 
                     if (Raylib.IsKeyPressed(KeyboardKey.KEY_R))
                         verletSolver = new VerletSolver();
 
-                    List<Delaunay.Triangle> triangles = new List<Delaunay.Triangle>();
-                    List<decimal2> vertices = new List<decimal2>();
-                    for (int i = 0; i < verletSolver._verletVertices.Count; i++)
+                    // List<Delaunay.Triangle> triangles = new List<Delaunay.Triangle>();
+                    // List<decimal2> vertices = new List<decimal2>();
+                    // for (int i = 0; i < verletSolver._verletVertices.Count; i++)
+                    // {
+                    //     Vector2 vec = verletSolver._verletVertices[i].position;
+                    //     if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                    //         continue;
+                    //     vertices.Add(vec);
+                    // }
+                    // triangles = Delaunay.BowyerWatson2D(vertices, 10000m);
+
+                    System.Diagnostics.Stopwatch delaunayNet = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch delaunaySharp = new System.Diagnostics.Stopwatch();
+
+                    DelaunatorNet.TriangulationInfo triangleInfo = null;
+                    int[] triangles = null;
+                    DelaunatorSharp.IPoint[] points = null;
+                    if (verletSolver._verletVertices.Count > 2)
                     {
-                        Vector2 vec = verletSolver._verletVertices[i].position;
-                        if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
-                            continue;
-                        vertices.Add(vec);
+                        {
+                            delaunayNet.Start();
+                            double[] vertices = new double[verletSolver._verletVertices.Count * 2];
+                            for (int i = 0; i < verletSolver._verletVertices.Count; i++)
+                            {
+                                Vector2 vec = verletSolver._verletVertices[i].position;
+                                if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                                    continue;
+                                vertices[2 * i + 0] = vec.X;
+                                vertices[2 * i + 1] = vec.Y;
+                            }
+                            DelaunatorNet.Delaunator delaunator = new DelaunatorNet.Delaunator(vertices);
+                            triangleInfo = delaunator.Build();
+                            delaunayNet.Stop();
+                        }
+                        {
+                            delaunaySharp.Start();
+                            DelaunatorSharp.IPoint[] vertices = new DelaunatorSharp.IPoint[verletSolver._verletVertices.Count];
+                            for (int i = 0; i < verletSolver._verletVertices.Count; i++)
+                            {
+                                Vector2 vec = verletSolver._verletVertices[i].position;
+                                if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                                    continue;
+                                vertices[i] = new Point() { X = vec.X, Y = vec.Y };
+                            }
+                            DelaunatorSharp.Delaunator delaunator = new DelaunatorSharp.Delaunator(vertices);
+                            triangles = delaunator.Triangles;
+                            points = delaunator.Points;
+                            delaunaySharp.Stop();
+                        }
                     }
-                    triangles = Delaunay.BowyerWatson2D(vertices, 10000m);
 
                     // render
                     Raylib.BeginDrawing();
@@ -320,16 +376,39 @@ namespace Sandbox
                     Raylib.BeginMode2D(camera2D);
                     verletSolver.Solve(deltaTime);
                     verletSolver.Render();
-                    for (int i = 0; i < triangles.Count; i++)
+                    if (triangleInfo != null)
                     {
-                        var triangle = triangles[i];
-                        Raylib.DrawTriangleLines((Vector2)vertices[triangle._vIndex0], (Vector2)vertices[triangle._vIndex1], (Vector2)vertices[triangle._vIndex2], Color.BLUE);
+                        for (int i = 0; i < triangleInfo.Triangles.Length; i += 3)
+                        {
+                            int vIndex0 = triangleInfo.Triangles[i + 0] * 2;
+                            int vIndex1 = triangleInfo.Triangles[i + 1] * 2;
+                            int vIndex2 = triangleInfo.Triangles[i + 2] * 2;
+                            Vector2 v0 = new Vector2((float)triangleInfo.Points[vIndex0 + 0], (float)triangleInfo.Points[vIndex0 + 1]);
+                            Vector2 v1 = new Vector2((float)triangleInfo.Points[vIndex1 + 0], (float)triangleInfo.Points[vIndex1 + 1]);
+                            Vector2 v2 = new Vector2((float)triangleInfo.Points[vIndex2 + 0], (float)triangleInfo.Points[vIndex2 + 1]);
+                            Raylib.DrawTriangleLines(v0, v1, v2, Color.BLUE);
+                        }
+                    }
+                    if (triangles != null)
+                    {
+                        for (int i = 0; i < triangles.Length; i += 3)
+                        {
+                            int vIndex0 = triangles[i + 0];
+                            int vIndex1 = triangles[i + 1];
+                            int vIndex2 = triangles[i + 2];
+                            Vector2 v0 = new Vector2((float)points[vIndex0].X, (float)points[vIndex0].Y);
+                            Vector2 v1 = new Vector2((float)points[vIndex1].X, (float)points[vIndex1].Y);
+                            Vector2 v2 = new Vector2((float)points[vIndex2].X, (float)points[vIndex2].Y);
+                            Raylib.DrawTriangleLines(v0, v1, v2, Color.RED);
+                        }
                     }
                     Raylib.DrawLine(short.MinValue, 0, short.MaxValue, 0, Color.RED);
                     Raylib.DrawLine(0, short.MinValue, 0, short.MaxValue, Color.GREEN);
                     Raylib.EndMode2D();
 
-                    Raylib.DrawText($"deltaTime:{deltaTime}", 12, 12, 20, Color.BLACK);
+                    Raylib.DrawText($"deltaTime:{deltaTime}", 12, 20 + 1, 20, Color.BLACK);
+                    Raylib.DrawText($"delaunayNet:{delaunayNet.Elapsed.TotalMilliseconds}", 12, 40 + 1, 20, Color.BLACK);
+                    Raylib.DrawText($"delaunaySharp:{delaunaySharp.Elapsed.TotalMilliseconds}", 12, 60 + 1, 20, Color.BLACK);
                     Raylib.EndDrawing();
                 }
                 Raylib.CloseWindow();
@@ -367,8 +446,8 @@ namespace Sandbox
             void CreateGrid(VerletSolver solver, Vector2 positionWS, Vector2 force)
             {
                 const float ballSize = 4;
-                const int gridSizeX = 5;
-                const int gridSizeY = 5;
+                const int gridSizeX = 10;
+                const int gridSizeY = 10;
                 VerletVertex[,] vertices = new VerletVertex[gridSizeX, gridSizeY];
 
                 for (int x = 0; x < gridSizeX; x++)
