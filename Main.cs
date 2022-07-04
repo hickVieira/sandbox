@@ -8,8 +8,8 @@
             // Programs.DrawCircle();
             // Programs.CameraRendering2D();
             // var particles = new Programs.Particles();
-            // var verlet = new Programs.Verlet();
-            var triangulator = new Programs.Triangulator();
+            var verlet = new Programs.Verlet();
+            // var triangulator = new Programs.Triangulator();
         }
     }
 }

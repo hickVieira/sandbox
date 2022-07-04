@@ -186,8 +186,8 @@ namespace Sandbox
                     Raylib.DrawLine(0, short.MinValue, 0, short.MaxValue, Color.GREEN);
                     Raylib.EndMode2D();
 
-                    Raylib.DrawText($"delaunayNet:{delaunayNet.Elapsed.TotalMilliseconds}", 12, 40 + 1, 20, Color.RED);
-                    Raylib.DrawText($"delaunaySharp:{delaunaySharp.Elapsed.TotalMilliseconds}", 12, 60 + 1, 20, Color.BLUE);
+                    Raylib.DrawText($"DelaunatorNet:{delaunayNet.Elapsed.TotalMilliseconds}", 12, 40 + 1, 20, Color.RED);
+                    Raylib.DrawText($"DelaunatorSharp:{delaunaySharp.Elapsed.TotalMilliseconds}", 12, 60 + 1, 20, Color.BLUE);
                     Raylib.DrawText($"S-hull:{delaunaySHull.Elapsed.TotalMilliseconds}", 12, 80 + 1, 20, Color.GREEN);
                     Raylib.DrawText($"MIConvexHull:{delaunayQHull.Elapsed.TotalMilliseconds}", 12, 100 + 1, 20, Color.BLACK);
                     Raylib.EndDrawing();

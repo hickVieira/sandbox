@@ -44,6 +44,15 @@ namespace Sandbox
             CreateNode(center, size, depth);
         }
 
+        public void Clear()
+        {
+            for (int i = 0; i < _nodesItems.Count; i++)
+                _nodesItems[i]?.Clear();
+            // _nodes.Clear();
+            // _nodesItems.Clear();
+            // _nodesAABBs.Clear();
+        }
+
         public void Insert(T obj, Vector2 position)
         {
             Insert(obj, position, 0);
