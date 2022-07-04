@@ -23,34 +23,36 @@ namespace Sandbox
         private List<Node> _nodes;
         public List<List<T>> _nodesItems;
         public List<AABB2> _nodesAABBs;
+        private Vector2 _center;
         private Vector2 _maxSize;
-        private uint _maxDepth;
+        private byte _maxDepth;
 
         public void Draw(Color color)
         {
-            if (_nodesAABBs == null)
-                return;
+            if (_nodesAABBs == null || _nodesAABBs.Count == 0) return;
             for (int i = 0; i < _nodesAABBs.Count; i++)
                 _nodesAABBs[i].Draw(color);
         }
 
-        public QuadTree(Vector2 center, Vector2 size, byte depth)
+        public QuadTree<T> Update(Vector2 center, Vector2 size, byte depth)
         {
+            _center = center;
             _maxSize = size;
             _maxDepth = depth;
-            _nodes = new List<Node>();
-            _nodesItems = new List<List<T>>();
-            _nodesAABBs = new List<AABB2>();
+            if (_nodes == null)
+                _nodes = new List<Node>();
+            else
+                _nodes.Clear();
+            if (_nodesItems == null)
+                _nodesItems = new List<List<T>>();
+            else
+                _nodesItems.Clear();
+            if (_nodesAABBs == null)
+                _nodesAABBs = new List<AABB2>();
+            else
+                _nodesAABBs.Clear();
             CreateNode(center, size, depth);
-        }
-
-        public void Clear()
-        {
-            for (int i = 0; i < _nodesItems.Count; i++)
-                _nodesItems[i]?.Clear();
-            // _nodes.Clear();
-            // _nodesItems.Clear();
-            // _nodesAABBs.Clear();
+            return this;
         }
 
         public void Insert(T obj, Vector2 position)

@@ -48,6 +48,7 @@ namespace Sandbox
 
                 public void Displace(Vector2 offset, float dissipate = 0)
                 {
+                    dissipate = Math.Clamp(dissipate, 0, 1);
                     _position += offset;
                     _position_old = ((1 - dissipate) * _position_old + dissipate * _position);
                 }
@@ -67,7 +68,7 @@ namespace Sandbox
                     _force += force;
                 }
 
-                public void Collide(VerletVertex otherVerletVertex, float dissipate = 0.01f)
+                public void Collide(VerletVertex otherVerletVertex, float dissipate = 0.005f)
                 {
                     Vector2 collisionVector = _position - otherVerletVertex.position;
                     float collisionLength = collisionVector.Length();
@@ -142,7 +143,6 @@ namespace Sandbox
                 public List<VerletVertex> _verletVertices;
                 public List<VerletEdge> _verletEdges;
                 public QuadTree<VerletVertex> _quadTree;
-                public uint _subStepsCount = 1;
                 public byte _quadTreeDepth = 7;
 
                 const float _boundaryRadius = 1000;
@@ -169,23 +169,21 @@ namespace Sandbox
                         _verletVertices[i]?.Render(Color.BLACK);
                     for (int i = 0; i < _verletEdges.Count; i++)
                         _verletEdges[i]?.Render();
-                    _quadTree?.Draw(Color.LIME);
+                    // _quadTree?.Draw(Color.LIME);
                 }
 
-                public void Solve(float deltaTime)
+                public void Solve(float deltaTime, uint subStepTarget = 1)
                 {
-                    _subStepsCount = Math.Max(_subStepsCount, 1);
+                    uint dynamicSubStepsCount = Math.Max((uint)((subStepTarget + _verletVertices.Count * 0.005f) / deltaTime), 1);
 
-                    // ideally it should called somewhere before collision solving
-                    SolveQuadTree();
-
-                    float subDeltaTime = deltaTime / _subStepsCount;
-                    for (int i = 0; i < _subStepsCount; i++)
+                    float subDeltaTime = deltaTime / dynamicSubStepsCount;
+                    for (int i = 0; i < dynamicSubStepsCount; i++)
                     {
                         ApplyAcceleration();
                         SolveBoundaries();
                         SolveEdges();
-                        SolveCollisions(subDeltaTime);
+                        SolveQuadTree();
+                        SolveCollisions(0.01f / dynamicSubStepsCount);
                         UpdateVerlet(subDeltaTime);
                     }
                 }
@@ -193,14 +191,18 @@ namespace Sandbox
                 void SolveQuadTree()
                 {
                     if (_quadTree == null)
-                        _quadTree = new QuadTree<VerletVertex>(Vector2.Zero, 3200 * Vector2.One, _quadTreeDepth);
-                    else
-                        _quadTree.Clear();
+                        _quadTree = new QuadTree<VerletVertex>();
+
+                    _quadTree.Update(Vector2.Zero, 3200 * Vector2.One, _quadTreeDepth);
+
                     for (int i = 0; i < _verletVertices.Count; i++)
                     {
                         VerletVertex vertex = _verletVertices[i];
                         if (vertex == null)
+                        {
+                            _verletVertices.RemoveAt(i--);
                             continue;
+                        }
                         Vector2 boundsVector = Vector2.One * vertex._radius * 2f;
                         _quadTree.Insert(vertex, new AABB2(vertex.position, boundsVector));
                     }
@@ -237,7 +239,7 @@ namespace Sandbox
                     }
                 }
 
-                void SolveCollisions(float deltaTime)
+                void SolveCollisions(float dissipate)
                 {
                     for (int i = 0; i < _verletVertices.Count; i++)
                     {
@@ -247,14 +249,13 @@ namespace Sandbox
                         if (nodeIndex == -1) continue;
 
                         List<VerletVertex> nodeItems = _quadTree.GetNodeItems(nodeIndex);
-                        if (nodeItems == null)
-                            continue;
+                        if (nodeItems == null) continue;
 
                         for (int j = 0; j < nodeItems.Count; j++)
                         {
                             VerletVertex otherVerletVertex = nodeItems[j];
                             if (object.ReferenceEquals(currentVerletVertex, otherVerletVertex)) continue;
-                            currentVerletVertex.Collide(otherVerletVertex, deltaTime);
+                            currentVerletVertex.Collide(otherVerletVertex, dissipate);
                         }
                     }
                 }
@@ -264,7 +265,8 @@ namespace Sandbox
                     for (int i = 0; i < _verletEdges.Count; i++)
                     {
                         VerletEdge edge = _verletEdges[i];
-                        if (edge._isBroken)
+
+                        if (edge == null || edge._isBroken)
                             _verletEdges.RemoveAt(i--);
                         else
                             edge.Apply(1, 0.01f);
@@ -283,16 +285,15 @@ namespace Sandbox
                 // data
                 int _screenWidth = 800;
                 int _screenHeight = 600;
-                int _targetFPS = 120;
+                int _targetFPS = 30;
                 float _mouseDeltaForce = 100;
-                float _fixedUpdateIntervalMS = 100f;
-                float _fixedDeltaTime = _fixedUpdateIntervalMS / 1000;
+                float _fixedUpdateIntervalMS = 500;
 
                 Vector2 screenCenter = new Vector2(_screenWidth, _screenHeight) / 2;
                 Camera2D camera2D = new Camera2D(screenCenter, Vector2.Zero, 0, 1);
                 VerletSolver verletSolver = new VerletSolver();
                 System.Timers.Timer fixedUpdateTimer = new System.Timers.Timer(_fixedUpdateIntervalMS);
-                fixedUpdateTimer.Elapsed += (obj, e) => verletSolver.Solve(_fixedDeltaTime);
+                fixedUpdateTimer.Elapsed += (obj, e) => verletSolver.Solve(_fixedUpdateIntervalMS / 1000);
                 fixedUpdateTimer.AutoReset = true;
                 fixedUpdateTimer.Start();
 
@@ -326,10 +327,6 @@ namespace Sandbox
                     Raylib.ClearBackground(Color.RAYWHITE);
 
                     Raylib.BeginMode2D(camera2D);
-                    if (Raylib.IsKeyPressed(KeyboardKey.KEY_ONE))
-                        verletSolver._subStepsCount--;
-                    else if (Raylib.IsKeyPressed(KeyboardKey.KEY_TWO))
-                        verletSolver._subStepsCount++;
                     if (Raylib.IsKeyPressed(KeyboardKey.KEY_THREE))
                         verletSolver._quadTreeDepth--;
                     else if (Raylib.IsKeyPressed(KeyboardKey.KEY_FOUR))
@@ -341,6 +338,9 @@ namespace Sandbox
                     Raylib.EndMode2D();
 
                     Raylib.DrawText($"deltaTime:{deltaTime}", 12, 20 + 1, 20, Color.BLACK);
+                    Raylib.DrawText($"quadTreeDepth:{verletSolver._quadTreeDepth}", 12, 60 + 1, 20, Color.BLACK);
+                    Raylib.DrawText($"verletObjects:{verletSolver._verletVertices.Count}", 12, 80 + 1, 20, Color.BLACK);
+                    Raylib.DrawText($"verletEdges:{verletSolver._verletEdges.Count}", 12, 100 + 1, 20, Color.BLACK);
                     Raylib.EndDrawing();
                 }
                 Raylib.CloseWindow();
@@ -355,7 +355,7 @@ namespace Sandbox
 
             void CreateGrid(VerletSolver solver, Vector2 positionWS, Vector2 force)
             {
-                const float ballSize = 4;
+                const float ballSize = 8;
                 const int gridSizeX = 5;
                 const int gridSizeY = 5;
                 VerletVertex[,] vertices = new VerletVertex[gridSizeX, gridSizeY];
@@ -368,7 +368,6 @@ namespace Sandbox
                         vertices[x, y] = vertex;
                         solver._verletVertices.Add(vertex);
                     }
-                return;
                 for (int x = 0; x < gridSizeX; x++)
                     for (int y = 0; y < gridSizeX; y++)
                     {
