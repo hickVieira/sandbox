@@ -7,12 +7,6 @@ namespace Sandbox
 {
     public static partial class Programs
     {
-        public struct Point : DelaunatorSharp.IPoint
-        {
-            public double X { get; set; }
-            public double Y { get; set; }
-        }
-
         // following pezza's work tutorial
         public class Verlet
         {
@@ -173,15 +167,15 @@ namespace Sandbox
                 public void Solve(float deltaTime)
                 {
                     _subStepsCount = Math.Max(_subStepsCount, 1);
-                    SolveQuadTree(); // ideally it should called somewhere before collision solving
                     uint dynamicStepCount = (uint)(1 + 0.025f * (_verletVertices.Count + _verletEdges.Count * 0.25f));
                     float subDeltaTime = deltaTime / _subStepsCount;
+                    // SolveQuadTree(); // ideally it should called somewhere before collision solving
                     for (int i = 0; i < _subStepsCount; i++)
                     {
-                        ApplyAcceleration();
-                        SolveBoundaries();
-                        SolveEdges();
-                        SolveCollisions();
+                        // ApplyAcceleration();
+                        // SolveBoundaries();
+                        // SolveEdges();
+                        // SolveCollisions();
                         UpdateVerlet(subDeltaTime);
                     }
                 }
@@ -283,7 +277,6 @@ namespace Sandbox
                 Camera2D camera2D = new Camera2D(screenCenter, Vector2.Zero, 0, 1);
                 VerletSolver verletSolver = new VerletSolver();
 
-                Raylib.SetConfigFlags(ConfigFlags.FLAG_MSAA_4X_HINT | ConfigFlags.FLAG_WINDOW_HIGHDPI);
                 Raylib.InitWindow(_screenWidth, _screenHeight, "Verlet");
                 Raylib.SetTargetFPS((int)_targetFPS);
                 while (!Raylib.WindowShouldClose())
@@ -310,22 +303,6 @@ namespace Sandbox
                     if (Raylib.IsKeyPressed(KeyboardKey.KEY_R))
                         verletSolver = new VerletSolver();
 
-                    DelaunatorNet.TriangulationInfo triangleInfo = null;
-                    if (verletSolver._verletVertices.Count > 2)
-                    {
-                        double[] vertices = new double[verletSolver._verletVertices.Count * 2];
-                        for (int i = 0; i < verletSolver._verletVertices.Count; i++)
-                        {
-                            Vector2 vec = verletSolver._verletVertices[i].position;
-                            if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
-                                continue;
-                            vertices[2 * i + 0] = vec.X;
-                            vertices[2 * i + 1] = vec.Y;
-                        }
-                        DelaunatorNet.Delaunator delaunator = new DelaunatorNet.Delaunator(vertices);
-                        triangleInfo = delaunator.Build();
-                    }
-
                     // render
                     Raylib.BeginDrawing();
                     Raylib.ClearBackground(Color.RAYWHITE);
@@ -341,19 +318,6 @@ namespace Sandbox
                         verletSolver._quadTreeDepth++;
                     verletSolver.Solve(deltaTime);
                     verletSolver.Render();
-                    if (triangleInfo != null)
-                    {
-                        for (int i = 0; i < triangleInfo.Triangles.Length; i += 3)
-                        {
-                            int vIndex0 = triangleInfo.Triangles[i + 0] * 2;
-                            int vIndex1 = triangleInfo.Triangles[i + 1] * 2;
-                            int vIndex2 = triangleInfo.Triangles[i + 2] * 2;
-                            Vector2 v0 = new Vector2((float)triangleInfo.Points[vIndex0 + 0], (float)triangleInfo.Points[vIndex0 + 1]);
-                            Vector2 v1 = new Vector2((float)triangleInfo.Points[vIndex1 + 0], (float)triangleInfo.Points[vIndex1 + 1]);
-                            Vector2 v2 = new Vector2((float)triangleInfo.Points[vIndex2 + 0], (float)triangleInfo.Points[vIndex2 + 1]);
-                            Raylib.DrawTriangleLines(v0, v1, v2, Color.BLUE);
-                        }
-                    }
                     Raylib.DrawLine(short.MinValue, 0, short.MaxValue, 0, Color.RED);
                     Raylib.DrawLine(0, short.MinValue, 0, short.MaxValue, Color.GREEN);
                     Raylib.EndMode2D();
@@ -408,7 +372,6 @@ namespace Sandbox
                         vertices[x, y] = vertex;
                         solver._verletVertices.Add(vertex);
                     }
-                return;
                 for (int x = 0; x < gridSizeX; x++)
                     for (int y = 0; y < gridSizeX; y++)
                     {
