@@ -147,7 +147,7 @@ namespace Sandbox
 
                 const float _boundaryRadius = 1000;
                 // const float _gravityForce = 9.81f * 5520;
-                const float _gravityForce = 9.81f * 10;
+                const float _gravityForce = 9.81f * 50;
 
                 public VerletSolver()
                 {
@@ -174,7 +174,7 @@ namespace Sandbox
 
                 public void Solve(float deltaTime, uint subStepTarget = 1)
                 {
-                    uint dynamicSubStepsCount = Math.Max((uint)((subStepTarget + _verletVertices.Count * 0.005f) / deltaTime), 1);
+                    uint dynamicSubStepsCount = Math.Max((uint)((subStepTarget + _verletVertices.Count * 0.01f) / deltaTime), 1);
 
                     float subDeltaTime = deltaTime / dynamicSubStepsCount;
                     for (int i = 0; i < dynamicSubStepsCount; i++)
@@ -269,7 +269,7 @@ namespace Sandbox
                         if (edge == null || edge._isBroken)
                             _verletEdges.RemoveAt(i--);
                         else
-                            edge.Apply(1, 0.01f);
+                            edge.Apply(10, 0.03333f);
                     }
                 }
 
@@ -287,13 +287,13 @@ namespace Sandbox
                 int _screenHeight = 600;
                 int _targetFPS = 30;
                 float _mouseDeltaForce = 100;
-                float _fixedUpdateIntervalMS = 500;
+                float _fixedUpdateIntervalMS = 100;
 
                 Vector2 screenCenter = new Vector2(_screenWidth, _screenHeight) / 2;
                 Camera2D camera2D = new Camera2D(screenCenter, Vector2.Zero, 0, 1);
                 VerletSolver verletSolver = new VerletSolver();
                 System.Timers.Timer fixedUpdateTimer = new System.Timers.Timer(_fixedUpdateIntervalMS);
-                fixedUpdateTimer.Elapsed += (obj, e) => verletSolver.Solve(_fixedUpdateIntervalMS / 1000);
+                fixedUpdateTimer.Elapsed += (obj, e) => verletSolver.Solve(_fixedUpdateIntervalMS / 1000, 2);
                 fixedUpdateTimer.AutoReset = true;
                 fixedUpdateTimer.Start();
 
@@ -331,16 +331,15 @@ namespace Sandbox
                         verletSolver._quadTreeDepth--;
                     else if (Raylib.IsKeyPressed(KeyboardKey.KEY_FOUR))
                         verletSolver._quadTreeDepth++;
-                    // verletSolver.Solve(deltaTime);
                     verletSolver.Render();
                     Raylib.DrawLine(short.MinValue, 0, short.MaxValue, 0, Color.RED);
                     Raylib.DrawLine(0, short.MinValue, 0, short.MaxValue, Color.GREEN);
                     Raylib.EndMode2D();
 
                     Raylib.DrawText($"deltaTime:{deltaTime}", 12, 20 + 1, 20, Color.BLACK);
-                    Raylib.DrawText($"quadTreeDepth:{verletSolver._quadTreeDepth}", 12, 60 + 1, 20, Color.BLACK);
-                    Raylib.DrawText($"verletObjects:{verletSolver._verletVertices.Count}", 12, 80 + 1, 20, Color.BLACK);
-                    Raylib.DrawText($"verletEdges:{verletSolver._verletEdges.Count}", 12, 100 + 1, 20, Color.BLACK);
+                    Raylib.DrawText($"quadTreeDepth:{verletSolver._quadTreeDepth}", 12, 40 + 1, 20, Color.BLACK);
+                    Raylib.DrawText($"verletObjects:{verletSolver._verletVertices.Count}", 12, 60 + 1, 20, Color.BLACK);
+                    Raylib.DrawText($"verletEdges:{verletSolver._verletEdges.Count}", 12, 80 + 1, 20, Color.BLACK);
                     Raylib.EndDrawing();
                 }
                 Raylib.CloseWindow();
