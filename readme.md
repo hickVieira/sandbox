@@ -21,6 +21,7 @@
 
 ## Libraries
 - [rayLib](https://www.raylib.com/) for rendering
+- [my own custom Bowyer-Watson 2D delaunator](math/Delaunay.cs) mega hyper super duper criminally slow
 - [delaunator-net](https://github.com/modios/delaunator-net) fast as hell
 - [delaunator-sharp](https://github.com/nol1fe/delaunator-sharp) same
 - [delaunator-csharp](https://github.com/wolktocs/delaunator-csharp) slightly slower (still hella fast)
@@ -28,8 +29,10 @@
 - [MIConvexHull](https://designengrlab.github.io/MIConvexHull/) not fast - however it is an n-dimensional solution?
 - [Poly2Tri](https://github.com/Syncaidius/Poly2Tri) faster than original poly2tri-cs version - probably because it was ported from Java?
 - [poly2tri-cs](https://github.com/Unity-Technologies/poly2tri-cs) not slow, not fast, no complains you know
-- [Poly2Tri(biofluidix)](https://github.com/BioFluidix/Poly2Tri) pretty fucking slow - probably an early fork of the Java port?
+- [Poly2Tri-biofluidix](https://github.com/BioFluidix/Poly2Tri) super slow - probably an early fork of the Java port?
 - [LibTessDotNet](https://github.com/speps/LibTessDotNet) not fast, several times slower than modern Poly2Tri
+- [QuickHull3D-biofluidix](https://github.com/BioFluidix/QuickHull3D) really fast - faster than MIConvexHull
+- [QuickHull3D-oskar](https://github.com/OskarSigvardsson/unity-quickhull) slower than biofluidix's cs port - but faster than MIConvexHull
 
 Obviously comparing some of the constrained delaunay vs non-constrained delaunay, or even 2D vs 3D vs nD isn't fair - so weight your judgement properly.
 

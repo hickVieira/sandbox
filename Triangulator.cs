@@ -28,8 +28,8 @@ namespace Sandbox
             }
 
             // data
-            int _screenWidth = 800;
-            int _screenHeight = 600;
+            int _screenWidth = (int)(800 * 1.5f);
+            int _screenHeight = (int)(600 * 1.5f);
             double _targetFPS = 120;
             float _mouseDeltaForce = 100;
             public Triangulator()
@@ -65,16 +65,21 @@ namespace Sandbox
                     if (Raylib.IsKeyPressed(KeyboardKey.KEY_R))
                         points.Clear();
 
-                    System.Diagnostics.Stopwatch delaunayNet = new System.Diagnostics.Stopwatch();
-                    System.Diagnostics.Stopwatch delaunaySharp = new System.Diagnostics.Stopwatch();
-                    System.Diagnostics.Stopwatch delaunayCsharp = new System.Diagnostics.Stopwatch();
-                    System.Diagnostics.Stopwatch delaunaySHull = new System.Diagnostics.Stopwatch();
-                    System.Diagnostics.Stopwatch delaunayQHull = new System.Diagnostics.Stopwatch();
-                    System.Diagnostics.Stopwatch delaunayPoly2Tri = new System.Diagnostics.Stopwatch();
-                    System.Diagnostics.Stopwatch delaunayPoly2Trics = new System.Diagnostics.Stopwatch();
-                    System.Diagnostics.Stopwatch delaunayPoly2Tribiodludix = new System.Diagnostics.Stopwatch();
-                    System.Diagnostics.Stopwatch delaunayLibTessDotNet = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchMydelaunay = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchNet = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchSharp = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchCsharp = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchSHull = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchQHull = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchPoly2Tri = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchPoly2Trics = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchPoly2Tri_biofluidix = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchLibTessDotNet = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchQuickHull3D_biofluidix = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchQuickHull3D_oskar = new System.Diagnostics.Stopwatch();
 
+                    List<decimal2> mydelaunayVertices = null;
+                    List<Delaunay.Triangle> mydelaunayTriangles = null;
                     DelaunatorNet.TriangulationInfo netTriangleInfo = null;
                     int[] sharpTriangles = null;
                     DelaunatorSharp.IPoint[] sharpPoints = null;
@@ -87,12 +92,25 @@ namespace Sandbox
                     List<Poly2Tri.Vector2> poly2triVertices = null;
                     IList<Poly2Tri_cs.DelaunayTriangle> poly2tricsTriangles = null;
                     List<Poly2Tri_cs.PolygonPoint> poly2tricsVertices = null;
-                    IList<Poly2Tri_biofluidix.DelaunayTriangle> poly2tribiofluidixTriangles = null;
                     List<Poly2Tri_biofluidix.PolygonPoint> poly2tribiofluidixVertices = null;
+                    IList<Poly2Tri_biofluidix.DelaunayTriangle> poly2tribiofluidixTriangles = null;
                     int[] libtessdotnetTriangles = null;
                     LibTessDotNet.ContourVertex[] libtessdotnetVertices = null;
                     if (points.Count > 2)
                     {
+                        {
+                            mydelaunayVertices = new List<decimal2>();
+                            for (int i = 0; i < points.Count; i++)
+                            {
+                                Vector2 vec = points[i];
+                                if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                                    continue;
+                                mydelaunayVertices.Add(vec);
+                            }
+                            stopwatchMydelaunay.Start();
+                            mydelaunayTriangles = Delaunay.BowyerWatson2D(mydelaunayVertices, 10000);
+                            stopwatchMydelaunay.Stop();
+                        }
                         {
                             double[] vertices = new double[points.Count * 2];
                             for (int i = 0; i < points.Count; i++)
@@ -103,10 +121,10 @@ namespace Sandbox
                                 vertices[2 * i + 0] = vec.X;
                                 vertices[2 * i + 1] = vec.Y;
                             }
-                            delaunayNet.Start();
+                            stopwatchNet.Start();
                             DelaunatorNet.Delaunator delaunator = new DelaunatorNet.Delaunator(vertices);
                             netTriangleInfo = delaunator.Build();
-                            delaunayNet.Stop();
+                            stopwatchNet.Stop();
                         }
                         {
                             DelaunatorSharp.IPoint[] vertices = new DelaunatorSharp.IPoint[points.Count];
@@ -117,9 +135,9 @@ namespace Sandbox
                                     continue;
                                 vertices[i] = new vec2Sharp() { X = vec.X, Y = vec.Y };
                             }
-                            delaunaySharp.Start();
+                            stopwatchSharp.Start();
                             DelaunatorSharp.Delaunator delaunator = new DelaunatorSharp.Delaunator(vertices);
-                            delaunaySharp.Stop();
+                            stopwatchSharp.Stop();
                             sharpTriangles = delaunator.Triangles;
                             sharpPoints = delaunator.Points;
                         }
@@ -133,9 +151,9 @@ namespace Sandbox
                                 csharpVertices.Add(vec.X);
                                 csharpVertices.Add(vec.Y);
                             }
-                            delaunayCsharp.Start();
+                            stopwatchCsharp.Start();
                             Delaunator.Triangulation triangulation = new Delaunator.Triangulation(csharpVertices);
-                            delaunayCsharp.Stop();
+                            stopwatchCsharp.Stop();
                             csharpTriangles = triangulation.triangles;
                         }
                         {
@@ -147,12 +165,12 @@ namespace Sandbox
                                     continue;
                                 shullPoints.Add(new DelaunayTriangulator.Vertex(vec.X, vec.Y));
                             }
-                            delaunaySHull.Start();
+                            stopwatchSHull.Start();
                             DelaunayTriangulator.Triangulator triangulator = new DelaunayTriangulator.Triangulator();
                             shullTriads = triangulator.Triangulation(shullPoints, true);
-                            delaunaySHull.Stop();
+                            stopwatchSHull.Stop();
                         }
-                        if (points.Count > 3)
+                        if (points.Count > 3) // this should work with 2 verts - probaly a bug
                         {
                             List<vec2QHull> vertices = new List<vec2QHull>();
                             for (int i = 0; i < points.Count; i++)
@@ -162,9 +180,9 @@ namespace Sandbox
                                     continue;
                                 vertices.Add(new vec2QHull(vec.X, vec.Y));
                             }
-                            delaunayQHull.Start();
+                            stopwatchQHull.Start();
                             qhullTriangles = MIConvexHull.Triangulation.CreateDelaunay<vec2QHull, triangleQHull>(vertices).Cells;
-                            delaunayQHull.Stop();
+                            stopwatchQHull.Stop();
                         }
                         {
                             poly2triVertices = new List<Poly2Tri.Vector2>();
@@ -176,10 +194,10 @@ namespace Sandbox
                                 poly2triVertices.Add(new Poly2Tri.Vector2(vec.X, vec.Y));
                             }
                             poly2triTriangles ??= new List<Poly2Tri.Triangle>();
-                            delaunayPoly2Tri.Start();
+                            stopwatchPoly2Tri.Start();
                             Poly2Tri.Shape shape = new Poly2Tri.Shape(poly2triVertices);
                             shape.Triangulate(poly2triTriangles);
-                            delaunayPoly2Tri.Stop();
+                            stopwatchPoly2Tri.Stop();
                         }
                         {
                             poly2tricsVertices = new List<Poly2Tri_cs.PolygonPoint>();
@@ -190,10 +208,10 @@ namespace Sandbox
                                     continue;
                                 poly2tricsVertices.Add(new Poly2Tri_cs.PolygonPoint(vec.X, vec.Y));
                             }
-                            delaunayPoly2Trics.Start();
+                            stopwatchPoly2Trics.Start();
                             Poly2Tri_cs.Polygon polygon = new Poly2Tri_cs.Polygon(poly2tricsVertices);
                             Poly2Tri_cs.P2T.Triangulate(polygon);
-                            delaunayPoly2Trics.Stop();
+                            stopwatchPoly2Trics.Stop();
                             poly2tricsTriangles = polygon.Triangles;
                         }
                         {
@@ -205,10 +223,10 @@ namespace Sandbox
                                     continue;
                                 poly2tribiofluidixVertices.Add(new Poly2Tri_biofluidix.PolygonPoint(vec.X, vec.Y));
                             }
-                            delaunayPoly2Tribiodludix.Start();
+                            stopwatchPoly2Tri_biofluidix.Start();
                             Poly2Tri_biofluidix.Polygon polygon = new Poly2Tri_biofluidix.Polygon(poly2tribiofluidixVertices);
                             Poly2Tri_biofluidix.Poly2Tri.triangulate(polygon);
-                            delaunayPoly2Tribiodludix.Stop();
+                            stopwatchPoly2Tri_biofluidix.Stop();
                             poly2tribiofluidixTriangles = polygon.getTriangles();
                         }
                         {
@@ -220,13 +238,46 @@ namespace Sandbox
                                     continue;
                                 vertices.Add(new LibTessDotNet.ContourVertex(new LibTessDotNet.Vec3(vec.X, vec.Y, 0)));
                             }
-                            delaunayLibTessDotNet.Start();
+                            stopwatchLibTessDotNet.Start();
                             LibTessDotNet.Tess tess = new LibTessDotNet.Tess();
                             tess.AddContour(vertices, LibTessDotNet.ContourOrientation.Original);
                             tess.Tessellate(LibTessDotNet.WindingRule.Positive, LibTessDotNet.ElementType.Polygons);
-                            delaunayLibTessDotNet.Stop();
+                            stopwatchLibTessDotNet.Stop();
                             libtessdotnetVertices = tess.Vertices;
                             libtessdotnetTriangles = tess.Elements;
+                        }
+                        if (points.Count > 3)
+                        {
+                            List<QuickHull3D.Point3d> vertices = new List<QuickHull3D.Point3d>();
+                            for (int i = 0; i < points.Count; i++)
+                            {
+                                Vector2 vec = points[i];
+                                if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                                    continue;
+                                vertices.Add(new QuickHull3D.Point3d(vec.X, vec.Y, Raylib.GetRandomValue(-1000, 1000)));
+                            }
+                            stopwatchQuickHull3D_biofluidix.Start();
+                            QuickHull3D.Hull hull = new QuickHull3D.Hull(vertices.ToArray());
+                            hull.Triangulate();
+                            stopwatchQuickHull3D_biofluidix.Stop();
+                        }
+                        if (points.Count > 3)
+                        {
+                            List<Vector3> vertices = new List<Vector3>();
+                            for (int i = 0; i < points.Count; i++)
+                            {
+                                Vector2 vec = points[i];
+                                if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                                    continue;
+                                vertices.Add(new Vector3(vec.X, vec.Y, Raylib.GetRandomValue(-1000, 1000)));
+                            }
+                            List<Vector3> outVertices = new List<Vector3>();
+                            List<Vector3> outNormals = new List<Vector3>();
+                            List<int> outTriangles = new List<int>();
+                            stopwatchQuickHull3D_oskar.Start();
+                            GK.ConvexHullCalculator hull = new GK.ConvexHullCalculator();
+                            hull.GenerateHull(vertices, false, ref outVertices, ref outTriangles, ref outNormals);
+                            stopwatchQuickHull3D_oskar.Stop();
                         }
                     }
 
@@ -239,6 +290,16 @@ namespace Sandbox
                             for (int i = 0; i < points.Count; i++)
                                 Raylib.DrawCircle((int)points[i].X, (int)points[i].Y, 1, Color.BLACK);
 
+                            if (mydelaunayTriangles != null)
+                            {
+                                for (int i = 0; i < mydelaunayTriangles.Count; i++)
+                                {
+                                    int vIndex0 = mydelaunayTriangles[i]._vIndex0;
+                                    int vIndex1 = mydelaunayTriangles[i]._vIndex1;
+                                    int vIndex2 = mydelaunayTriangles[i]._vIndex2;
+                                    Raylib.DrawTriangleLines((Vector2)mydelaunayVertices[vIndex0], (Vector2)mydelaunayVertices[vIndex1], (Vector2)mydelaunayVertices[vIndex2], Color.BEIGE);
+                                }
+                            }
                             if (netTriangleInfo != null)
                             {
                                 for (int i = 0; i < netTriangleInfo.Triangles.Length; i += 3)
@@ -323,7 +384,7 @@ namespace Sandbox
                                     Vector2 v0 = new Vector2((float)triangle.points[0].getX(), (float)triangle.points[0].getY());
                                     Vector2 v1 = new Vector2((float)triangle.points[1].getX(), (float)triangle.points[1].getY());
                                     Vector2 v2 = new Vector2((float)triangle.points[2].getX(), (float)triangle.points[2].getY());
-                                    Raylib.DrawTriangleLines(v0, v1, v2, Color.LIGHTGRAY);
+                                    Raylib.DrawTriangleLines(v0, v1, v2, Color.BROWN);
                                 }
                             }
                             if (libtessdotnetTriangles != null)
@@ -341,15 +402,18 @@ namespace Sandbox
                         }
                         Raylib.EndMode2D();
 
-                        Raylib.DrawText($"delaunator-net:{delaunayNet.Elapsed.TotalMilliseconds}", 12, 40 + 1, 20, Color.RED);
-                        Raylib.DrawText($"delaunator-sharp:{delaunaySharp.Elapsed.TotalMilliseconds}", 12, 60 + 1, 20, Color.BLUE);
-                        Raylib.DrawText($"delaunator-csharp:{delaunayCsharp.Elapsed.TotalMilliseconds}", 12, 80 + 1, 20, Color.ORANGE);
-                        Raylib.DrawText($"s-hull:{delaunaySHull.Elapsed.TotalMilliseconds}", 12, 100 + 1, 20, Color.GREEN);
-                        Raylib.DrawText($"MIConvexHull:{delaunayQHull.Elapsed.TotalMilliseconds}", 12, 120 + 1, 20, Color.BLACK);
-                        Raylib.DrawText($"Poly2Tri:{delaunayPoly2Tri.Elapsed.TotalMilliseconds}", 12, 140 + 1, 20, Color.YELLOW);
-                        Raylib.DrawText($"poly2tri-cs:{delaunayPoly2Trics.Elapsed.TotalMilliseconds}", 12, 160 + 1, 20, Color.PINK);
-                        Raylib.DrawText($"Poly2Tri-biofluidix:{delaunayPoly2Tribiodludix.Elapsed.TotalMilliseconds}", 12, 180 + 1, 20, Color.LIGHTGRAY);
-                        Raylib.DrawText($"LibTessDotNet:{delaunayLibTessDotNet.Elapsed.TotalMilliseconds}", 12, 200 + 1, 20, Color.RAYWHITE);
+                        Raylib.DrawText($"myDelaunator:{stopwatchMydelaunay.Elapsed.TotalMilliseconds}", 12, 40 + 1, 20, Color.BEIGE);
+                        Raylib.DrawText($"delaunator-net:{stopwatchNet.Elapsed.TotalMilliseconds}", 12, 60 + 1, 20, Color.RED);
+                        Raylib.DrawText($"delaunator-sharp:{stopwatchSharp.Elapsed.TotalMilliseconds}", 12, 80 + 1, 20, Color.BLUE);
+                        Raylib.DrawText($"delaunator-csharp:{stopwatchCsharp.Elapsed.TotalMilliseconds}", 12, 100 + 1, 20, Color.ORANGE);
+                        Raylib.DrawText($"s-hull:{stopwatchSHull.Elapsed.TotalMilliseconds}", 12, 120 + 1, 20, Color.GREEN);
+                        Raylib.DrawText($"MIConvexHull:{stopwatchQHull.Elapsed.TotalMilliseconds}", 12, 140 + 1, 20, Color.BLACK);
+                        Raylib.DrawText($"Poly2Tri:{stopwatchPoly2Tri.Elapsed.TotalMilliseconds}", 12, 160 + 1, 20, Color.YELLOW);
+                        Raylib.DrawText($"poly2tri-cs:{stopwatchPoly2Trics.Elapsed.TotalMilliseconds}", 12, 180 + 1, 20, Color.PINK);
+                        Raylib.DrawText($"Poly2Tri-biofluidix:{stopwatchPoly2Tri_biofluidix.Elapsed.TotalMilliseconds}", 12, 200 + 1, 20, Color.BROWN);
+                        Raylib.DrawText($"LibTessDotNet:{stopwatchLibTessDotNet.Elapsed.TotalMilliseconds}", 12, 220 + 1, 20, Color.RAYWHITE);
+                        Raylib.DrawText($"QuickHull3D-biofluidix:{stopwatchQuickHull3D_biofluidix.Elapsed.TotalMilliseconds}", 12, 240 + 1, 20, Color.GOLD);
+                        Raylib.DrawText($"QuickHull3D-oskar:{stopwatchQuickHull3D_oskar.Elapsed.TotalMilliseconds}", 12, 260 + 1, 20, Color.MAGENTA);
                     }
                     Raylib.EndDrawing();
                 }
