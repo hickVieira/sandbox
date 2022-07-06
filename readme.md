@@ -7,6 +7,7 @@
 - Triangulation
 
 ## TODO
+  - Verlet orientation (for 1 joint springs ?)
   - Verlet collision 'shapes' ?
     - Circle
     - Edge

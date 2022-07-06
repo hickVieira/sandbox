@@ -14,10 +14,10 @@ namespace Sandbox
             {
                 public float _mass;
                 public float _radius;
+                private Color _color;
                 private Vector2 _position;
                 private Vector2 _position_old;
                 private Vector2 _acceleration;
-                private Vector2 _force;
 
                 public Vector2 position { get => _position; }
                 public Vector2 velocity { get => _position - _position_old; }
@@ -29,21 +29,23 @@ namespace Sandbox
                     this._radius = radius;
                     this._position_old = position;
                     this._acceleration = Vector2.Zero;
-                    this._force = Vector2.Zero;
+                    // this._color = new Color(Raylib.GetRandomValue(0, 255), Raylib.GetRandomValue(0, 255), Raylib.GetRandomValue(0, 255), 255);
+                    this._color = Color.BLACK;
                 }
 
-                public void Render(Color color)
+                public void Render()
                 {
-                    Raylib.DrawCircle((int)_position.X, (int)_position.Y, _radius, color);
+                    Vector2 currentVelocity = velocity * 10;
+                    Raylib.DrawCircle((int)_position.X, (int)_position.Y, _radius, _color);
+                    Raylib.DrawLine((int)_position.X, (int)_position.Y, (int)(_position.X + currentVelocity.X), (int)(_position.Y + currentVelocity.Y), Color.YELLOW);
                 }
 
                 public void Update(float deltaTime)
                 {
                     Vector2 currentVelocity = velocity;
                     _position_old = _position;
-                    _position = _position + currentVelocity + (_force * deltaTime / _mass) + _acceleration * deltaTime * deltaTime;
+                    _position = _position + currentVelocity + _acceleration * deltaTime * deltaTime;
                     _acceleration = Vector2.Zero;
-                    _force = Vector2.Zero;
                 }
 
                 public void Displace(Vector2 offset, float dissipate = 0)
@@ -65,7 +67,7 @@ namespace Sandbox
 
                 public void AddForce(Vector2 force)
                 {
-                    _force += force;
+                    _acceleration += force / _mass;
                 }
 
                 public void Collide(VerletVertex otherVerletVertex, float dissipate = 0.005f)
@@ -101,24 +103,31 @@ namespace Sandbox
 
                 public void Render()
                 {
-                    Raylib.DrawLine((int)_verletVertex0.position.X, (int)_verletVertex0.position.Y, (int)_verletVertex1.position.X, (int)_verletVertex1.position.Y, Color.GRAY);
+                    Vector2 edgeVector = _verletVertex0.position - _verletVertex1.position;
+                    float edgeLength = edgeVector.Length();
+                    float edgeStress = (edgeLength / _breakDistance) - 0.67f;
+                    Color color = Color.GRAY;
+                    color.r = (byte)((int)((1 - edgeStress) * color.r) + (int)(edgeStress * 255));
+                    color.g = (byte)((int)((1 - edgeStress) * color.g) + (int)(edgeStress * 0));
+                    color.b = (byte)((int)((1 - edgeStress) * color.b) + (int)(edgeStress * 0));
+                    Raylib.DrawLine((int)_verletVertex0.position.X, (int)_verletVertex0.position.Y, (int)_verletVertex1.position.X, (int)_verletVertex1.position.Y, color);
                 }
 
                 public void Apply()
                 {
                     Vector2 edgeVector = _verletVertex0.position - _verletVertex1.position;
                     float edgeLength = edgeVector.Length();
-                    float edgeDistance = _distance - edgeLength;
 
                     if (edgeLength > _breakDistance)
                         _isBroken = true;
 
+                    float edgeDistance = _distance - edgeLength;
                     Vector2 normal = edgeVector / edgeLength;
                     _verletVertex0.Displace(+0.5f * normal * edgeDistance);
                     _verletVertex1.Displace(-0.5f * normal * edgeDistance);
                 }
 
-                public void Apply(float springK, float springDampness = 0.01f)
+                public void Apply(float springK = 1000f, float springDampness = 1f)
                 {
                     Vector2 edgeVector = _verletVertex0.position - _verletVertex1.position;
                     float edgeLength = edgeVector.Length();
@@ -164,9 +173,9 @@ namespace Sandbox
 
                 public void Render()
                 {
-                    Raylib.DrawCircle(0, 0, _boundaryRadius, Color.WHITE);
+                    Raylib.DrawCircle(0, 0, _boundaryRadius, new Color(55, 55, 55, 255));
                     for (int i = 0; i < _verletVertices.Count; i++)
-                        _verletVertices[i]?.Render(Color.BLACK);
+                        _verletVertices[i]?.Render();
                     for (int i = 0; i < _verletEdges.Count; i++)
                         _verletEdges[i]?.Render();
                     // _quadTree?.Draw(Color.LIME);
@@ -174,7 +183,8 @@ namespace Sandbox
 
                 public void Solve(float deltaTime, uint subStepTarget = 1)
                 {
-                    uint dynamicSubStepsCount = Math.Max((uint)((subStepTarget + _verletVertices.Count * 0.01f) / deltaTime), 1);
+                    // uint dynamicSubStepsCount = Math.Max((uint)((subStepTarget + _verletVertices.Count * 0.01f) / deltaTime), 1);
+                    uint dynamicSubStepsCount = Math.Max((uint)(subStepTarget / deltaTime), 1);
 
                     float subDeltaTime = deltaTime / dynamicSubStepsCount;
                     for (int i = 0; i < dynamicSubStepsCount; i++)
@@ -269,7 +279,7 @@ namespace Sandbox
                         if (edge == null || edge._isBroken)
                             _verletEdges.RemoveAt(i--);
                         else
-                            edge.Apply(10, 0.03333f);
+                            edge.Apply(10000, 10f);
                     }
                 }
 
@@ -286,7 +296,7 @@ namespace Sandbox
                 int _screenWidth = 800;
                 int _screenHeight = 600;
                 int _targetFPS = 30;
-                float _mouseDeltaForce = 100;
+                float _mouseDeltaForce = 10000;
                 float _fixedUpdateIntervalMS = 100;
 
                 Vector2 screenCenter = new Vector2(_screenWidth, _screenHeight) / 2;
@@ -324,7 +334,7 @@ namespace Sandbox
 
                     // render
                     Raylib.BeginDrawing();
-                    Raylib.ClearBackground(Color.RAYWHITE);
+                    Raylib.ClearBackground(Color.BLACK);
 
                     Raylib.BeginMode2D(camera2D);
                     if (Raylib.IsKeyPressed(KeyboardKey.KEY_THREE))
@@ -336,10 +346,10 @@ namespace Sandbox
                     Raylib.DrawLine(0, short.MinValue, 0, short.MaxValue, Color.GREEN);
                     Raylib.EndMode2D();
 
-                    Raylib.DrawText($"deltaTime:{deltaTime}", 12, 20 + 1, 20, Color.BLACK);
-                    Raylib.DrawText($"quadTreeDepth:{verletSolver._quadTreeDepth}", 12, 40 + 1, 20, Color.BLACK);
-                    Raylib.DrawText($"verletObjects:{verletSolver._verletVertices.Count}", 12, 60 + 1, 20, Color.BLACK);
-                    Raylib.DrawText($"verletEdges:{verletSolver._verletEdges.Count}", 12, 80 + 1, 20, Color.BLACK);
+                    Raylib.DrawText($"deltaTime:{deltaTime}", 12, 20 + 1, 20, Color.YELLOW);
+                    Raylib.DrawText($"quadTreeDepth:{verletSolver._quadTreeDepth}", 12, 40 + 1, 20, Color.YELLOW);
+                    Raylib.DrawText($"verletObjects:{verletSolver._verletVertices.Count}", 12, 60 + 1, 20, Color.YELLOW);
+                    Raylib.DrawText($"verletEdges:{verletSolver._verletEdges.Count}", 12, 80 + 1, 20, Color.YELLOW);
                     Raylib.EndDrawing();
                 }
                 Raylib.CloseWindow();
