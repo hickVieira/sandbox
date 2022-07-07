@@ -35,6 +35,9 @@
 - [QuickHull3D-biofluidix](https://github.com/BioFluidix/QuickHull3D) really fast - faster than MIConvexHull
 - [QuickHull3D-oskar](https://github.com/OskarSigvardsson/unity-quickhull) slower than biofluidix's cs port - but faster than MIConvexHull
 - [Delaunay-oskar](https://github.com/OskarSigvardsson/unity-delaunay) not fast
+- [csDelaunay](https://github.com/PouletFrit/csDelaunay) not that fast - it exposes voronoi api only though, even though it states 'delaunay'
+- [DelaunayVoronoi](https://github.com/RafaelKuebler/DelaunayVoronoi) slow and broken
+- [Voronoi-Delaunay](https://github.com/IsaacGuan/Voronoi-Delaunay) not so slow but broken with bad precision issues
 
 Obviously comparing some of the constrained delaunay vs non-constrained delaunay, or even 2D vs 3D vs nD isn't fair - so weight your judgement properly.
 

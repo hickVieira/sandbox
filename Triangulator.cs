@@ -44,8 +44,8 @@ namespace Sandbox
                     Vector2 mouseDelta = Raylib.GetMouseDelta();
 
                     // camera2d
-                    _camera2D.zoom += Raylib.GetMouseWheelMove() * 0.05f;
-                    _camera2D.zoom = Raylib_cs.Raymath.Clamp(_camera2D.zoom, 0.025f, 3);
+                    _camera2D.zoom += Raylib.GetMouseWheelMove() * 0.1f;
+                    _camera2D.zoom = Raylib_cs.Raymath.Clamp(_camera2D.zoom, 0.001f, 10);
                     if (Raylib.IsMouseButtonDown(MouseButton.MOUSE_MIDDLE_BUTTON))
                         _camera2D.target -= mouseDelta / _camera2D.zoom;
                     Vector2 mouseScreenPos = Raylib.GetMousePosition();
@@ -68,20 +68,6 @@ namespace Sandbox
                     {
                         Raylib.ClearBackground(Color.GRAY);
 
-                        test_myDelaunator(_camera2D, 12, 40 + 1, 20, _points, Color.RED);
-                        test_DelaunatorNet(_camera2D, 12, 60 + 1, 20, _points, Color.GREEN);
-                        test_DelaunatorSharp(_camera2D, 12, 80 + 1, 20, _points, Color.BLUE);
-                        test_DelaunatorCSharp(_camera2D, 12, 100 + 1, 20, _points, Color.GOLD);
-                        test_SHull(_camera2D, 12, 120 + 1, 20, _points, Color.SKYBLUE);
-                        test_MIConvexHull(_camera2D, 12, 140 + 1, 20, _points, Color.BLACK);
-                        test_Poly2Tri(_camera2D, 12, 160 + 1, 20, _points, Color.YELLOW);
-                        test_Poly2Trics(_camera2D, 12, 180 + 1, 20, _points, Color.PINK);
-                        test_Poly2TriBiofluidix(_camera2D, 12, 200 + 1, 20, _points, Color.BEIGE);
-                        test_LibTessDotNet(_camera2D, 12, 220 + 1, 20, _points, Color.RAYWHITE);
-                        test_DelaunayOskar(_camera2D, 12, 240 + 1, 20, _points, Color.ORANGE);
-                        test_QuickHull3DBiofluidix(_camera2D, 12, 260 + 1, 20, _points, Color.PURPLE);
-                        test_QuickHull3DOskar(_camera2D, 12, 280 + 1, 20, _points, Color.WHITE);
-
                         Raylib.BeginMode2D(_camera2D);
                         {
                             Raylib.DrawLine(short.MinValue, 0, short.MaxValue, 0, Color.RED);
@@ -90,6 +76,24 @@ namespace Sandbox
                                 Raylib.DrawCircle((int)_points[i].X, (int)_points[i].Y, 1, Color.BLACK);
                         }
                         Raylib.EndMode2D();
+
+                        Raylib.DrawText($"Points: {_points.Count}", 12, 20, 20, Color.WHITE);
+                        // test_myDelaunator(_camera2D, 12, 40 + 1, 20, _points, Color.RED);
+                        test_DelaunatorNet(_camera2D, 12, 60 + 1, 20, _points, Color.GREEN);
+                        test_DelaunatorSharp(_camera2D, 12, 80 + 1, 20, _points, Color.BLUE);
+                        test_DelaunatorCSharp(_camera2D, 12, 100 + 1, 20, _points, Color.GOLD);
+                        // test_SHull(_camera2D, 12, 120 + 1, 20, _points, Color.SKYBLUE);
+                        // test_MIConvexHull(_camera2D, 12, 140 + 1, 20, _points, Color.BLACK);
+                        // test_Poly2Tri(_camera2D, 12, 160 + 1, 20, _points, Color.YELLOW);
+                        // test_Poly2Trics(_camera2D, 12, 180 + 1, 20, _points, Color.PINK);
+                        // test_Poly2TriBiofluidix(_camera2D, 12, 200 + 1, 20, _points, Color.BEIGE);
+                        // test_LibTessDotNet(_camera2D, 12, 220 + 1, 20, _points, Color.RAYWHITE);
+                        // test_DelaunayOskar(_camera2D, 12, 240 + 1, 20, _points, Color.ORANGE);
+                        // test_csDelaunay(_camera2D, 12, 260 + 1, 20, _points, Color.RAYWHITE);
+                        // test_DelaunayVoronoi(_camera2D, 12, 280 + 1, 20, _points, Color.BROWN);
+                        // test_VoronoiDelaunay(_camera2D, 12, 300 + 1, 20, _points, Color.VIOLET);
+                        // test_QuickHull3DBiofluidix(_camera2D, 12, 260 + 1, 20, _points, Color.PURPLE);
+                        // test_QuickHull3DOskar(_camera2D, 12, 280 + 1, 20, _points, Color.WHITE);
                     }
                     Raylib.EndDrawing();
                 }
@@ -162,7 +166,7 @@ namespace Sandbox
                         Vector2 v0 = new Vector2((float)netTriangleInfo.Points[vIndex0 + 0], (float)netTriangleInfo.Points[vIndex0 + 1]);
                         Vector2 v1 = new Vector2((float)netTriangleInfo.Points[vIndex1 + 0], (float)netTriangleInfo.Points[vIndex1 + 1]);
                         Vector2 v2 = new Vector2((float)netTriangleInfo.Points[vIndex2 + 0], (float)netTriangleInfo.Points[vIndex2 + 1]);
-                        Raylib.DrawTriangleLines(v0, v1, v2, Color.RED);
+                        Raylib.DrawTriangleLines(v0, v1, v2, color);
                     }
                 }
                 Raylib.EndMode2D();
@@ -198,7 +202,7 @@ namespace Sandbox
                         int vIndex0 = sharpTriangles[i + 0];
                         int vIndex1 = sharpTriangles[i + 1];
                         int vIndex2 = sharpTriangles[i + 2];
-                        Raylib.DrawTriangleLines(inPoints[vIndex0], inPoints[vIndex1], inPoints[vIndex2], Color.BLUE);
+                        Raylib.DrawTriangleLines(inPoints[vIndex0], inPoints[vIndex1], inPoints[vIndex2], color);
                     }
                 }
                 Raylib.EndMode2D();
@@ -237,7 +241,7 @@ namespace Sandbox
                         Vector2 v0 = new Vector2((float)csharpVertices[vIndex0 + 0], (float)csharpVertices[vIndex0 + 1]);
                         Vector2 v1 = new Vector2((float)csharpVertices[vIndex1 + 0], (float)csharpVertices[vIndex1 + 1]);
                         Vector2 v2 = new Vector2((float)csharpVertices[vIndex2 + 0], (float)csharpVertices[vIndex2 + 1]);
-                        Raylib.DrawTriangleLines(v0, v1, v2, Color.ORANGE);
+                        Raylib.DrawTriangleLines(v0, v1, v2, color);
                     }
                 }
                 Raylib.EndMode2D();
@@ -273,7 +277,7 @@ namespace Sandbox
                         Vector2 v0 = new Vector2(vertices[triad.a].x, vertices[triad.a].y);
                         Vector2 v1 = new Vector2(vertices[triad.b].x, vertices[triad.b].y);
                         Vector2 v2 = new Vector2(vertices[triad.c].x, vertices[triad.c].y);
-                        Raylib.DrawTriangleLines(v0, v1, v2, Color.GREEN);
+                        Raylib.DrawTriangleLines(v0, v1, v2, color);
                     }
                 }
                 Raylib.EndMode2D();
@@ -307,7 +311,7 @@ namespace Sandbox
                         Vector2 v0 = new Vector2((float)triangle.Vertices[0].x, (float)triangle.Vertices[0].y);
                         Vector2 v1 = new Vector2((float)triangle.Vertices[1].x, (float)triangle.Vertices[1].y);
                         Vector2 v2 = new Vector2((float)triangle.Vertices[2].x, (float)triangle.Vertices[2].y);
-                        Raylib.DrawTriangleLines(v0, v1, v2, Color.BLACK);
+                        Raylib.DrawTriangleLines(v0, v1, v2, color);
                     }
                 }
                 Raylib.EndMode2D();
@@ -343,7 +347,7 @@ namespace Sandbox
                         Vector2 v0 = new Vector2((float)triangle.Points[0].X, (float)triangle.Points[0].Y);
                         Vector2 v1 = new Vector2((float)triangle.Points[1].X, (float)triangle.Points[1].Y);
                         Vector2 v2 = new Vector2((float)triangle.Points[2].X, (float)triangle.Points[2].Y);
-                        Raylib.DrawTriangleLines(v0, v1, v2, Color.YELLOW);
+                        Raylib.DrawTriangleLines(v0, v1, v2, color);
                     }
                 }
                 Raylib.EndMode2D();
@@ -379,7 +383,7 @@ namespace Sandbox
                         Vector2 v0 = new Vector2((float)triangle.Points[0].X, (float)triangle.Points[0].Y);
                         Vector2 v1 = new Vector2((float)triangle.Points[1].X, (float)triangle.Points[1].Y);
                         Vector2 v2 = new Vector2((float)triangle.Points[2].X, (float)triangle.Points[2].Y);
-                        Raylib.DrawTriangleLines(v0, v1, v2, Color.PINK);
+                        Raylib.DrawTriangleLines(v0, v1, v2, color);
                     }
                 }
                 Raylib.EndMode2D();
@@ -415,7 +419,7 @@ namespace Sandbox
                         Vector2 v0 = new Vector2((float)triangle.points[0].getX(), (float)triangle.points[0].getY());
                         Vector2 v1 = new Vector2((float)triangle.points[1].getX(), (float)triangle.points[1].getY());
                         Vector2 v2 = new Vector2((float)triangle.points[2].getX(), (float)triangle.points[2].getY());
-                        Raylib.DrawTriangleLines(v0, v1, v2, Color.BROWN);
+                        Raylib.DrawTriangleLines(v0, v1, v2, color);
                     }
                 }
                 Raylib.EndMode2D();
@@ -453,7 +457,7 @@ namespace Sandbox
                         LibTessDotNet.Vec3 v0 = libtessdotnetVertices[libtessdotnetTriangles[i + 0]].Position;
                         LibTessDotNet.Vec3 v1 = libtessdotnetVertices[libtessdotnetTriangles[i + 1]].Position;
                         LibTessDotNet.Vec3 v2 = libtessdotnetVertices[libtessdotnetTriangles[i + 2]].Position;
-                        Raylib.DrawTriangleLines(new Vector2(v0.X, v0.Y), new Vector2(v1.X, v1.Y), new Vector2(v2.X, v2.Y), Color.RAYWHITE);
+                        Raylib.DrawTriangleLines(new Vector2(v0.X, v0.Y), new Vector2(v1.X, v1.Y), new Vector2(v2.X, v2.Y), color);
                     }
                 }
                 Raylib.EndMode2D();
@@ -489,11 +493,115 @@ namespace Sandbox
                         Vector2 v0 = delaunay_oskar.Vertices[delaunay_oskar.Triangles[i + 0]];
                         Vector2 v1 = delaunay_oskar.Vertices[delaunay_oskar.Triangles[i + 1]];
                         Vector2 v2 = delaunay_oskar.Vertices[delaunay_oskar.Triangles[i + 2]];
-                        Raylib.DrawTriangleLines(v0, v1, v2, Color.SKYBLUE);
+                        Raylib.DrawTriangleLines(v0, v1, v2, color);
                     }
                 }
                 Raylib.EndMode2D();
                 Raylib.DrawText($"Delaunay-Oskar:{stopwatch.Elapsed.TotalMilliseconds}", fontPositionX, fontPositionY, fontSize, color);
+            }
+
+            void test_csDelaunay(Camera2D camera2D, int fontPositionX, int fontPositionY, int fontSize, List<Vector2> inPoints, Color color)
+            {
+                if (inPoints.Count < 3) return;
+
+                // vertices
+                List<Vector2f> vertices = new List<Vector2f>();
+                for (int i = 0; i < inPoints.Count; i++)
+                {
+                    Vector2 vec = inPoints[i];
+                    if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                        continue;
+                    vertices.Add(new Vector2f(vec.X, vec.Y));
+                }
+
+                // calculate
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                csDelaunay.Voronoi voronoi = new csDelaunay.Voronoi(vertices, new Rectf(-1000, -1000, 2000, 2000), 0);
+                stopwatch.Stop();
+                var lines = voronoi.VoronoiDiagram();
+
+                // draw
+                Raylib.BeginMode2D(camera2D);
+                {
+                    for (int i = 0; i < lines.Count; i++)
+                    {
+                        Vector2 v0 = new Vector2(lines[i].p0.x, lines[i].p0.y);
+                        Vector2 v1 = new Vector2(lines[i].p1.x, lines[i].p1.y);
+                        Raylib.DrawLine((int)v0.X, (int)v0.Y, (int)v1.X, (int)v1.Y, color);
+                    }
+                }
+                Raylib.EndMode2D();
+                Raylib.DrawText($"csDelaunay:{stopwatch.Elapsed.TotalMilliseconds}", fontPositionX, fontPositionY, fontSize, color);
+            }
+
+            void test_DelaunayVoronoi(Camera2D camera2D, int fontPositionX, int fontPositionY, int fontSize, List<Vector2> inPoints, Color color)
+            {
+                if (inPoints.Count < 3) return;
+
+                // vertices
+                List<DelaunayVoronoi.Point> vertices = new List<DelaunayVoronoi.Point>();
+                for (int i = 0; i < inPoints.Count; i++)
+                {
+                    Vector2 vec = inPoints[i];
+                    if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                        continue;
+                    vertices.Add(new DelaunayVoronoi.Point(vec.X, vec.Y));
+                }
+
+                // calculate
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                DelaunayVoronoi.DelaunayTriangulator triangulator = new DelaunayVoronoi.DelaunayTriangulator();
+                var triangles = triangulator.BowyerWatson(vertices);
+                stopwatch.Stop();
+
+                // draw
+                Raylib.BeginMode2D(camera2D);
+                {
+                    foreach (var triangle in triangles)
+                    {
+                        var v0 = triangle.Vertices[0];
+                        var v1 = triangle.Vertices[1];
+                        var v2 = triangle.Vertices[2];
+                        Raylib.DrawTriangleLines(new Vector2((float)v0.X, (float)v0.Y), new Vector2((float)v1.X, (float)v1.Y), new Vector2((float)v2.X, (float)v2.Y), color);
+                    }
+                }
+                Raylib.EndMode2D();
+                Raylib.DrawText($"DelaunayVoronoi:{stopwatch.Elapsed.TotalMilliseconds}", fontPositionX, fontPositionY, fontSize, color);
+            }
+
+            void test_VoronoiDelaunay(Camera2D camera2D, int fontPositionX, int fontPositionY, int fontSize, List<Vector2> inPoints, Color color)
+            {
+                if (inPoints.Count < 3) return;
+
+                // vertices
+                Voronoi_Delaunay.Collections.allPoints = new List<Voronoi_Delaunay.Point>();
+                for (int i = 0; i < inPoints.Count; i++)
+                {
+                    Vector2 vec = inPoints[i];
+                    if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                        continue;
+                    Voronoi_Delaunay.Collections.allPoints.Add(new Voronoi_Delaunay.Point(vec.X, vec.Y));
+                }
+
+                // calculate
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var superTriangle = Voronoi_Delaunay.Delaunay.SuperTriangle(Voronoi_Delaunay.Collections.allPoints);
+                var triangles = Voronoi_Delaunay.Delaunay.Triangulate(superTriangle, Voronoi_Delaunay.Collections.allPoints);
+                stopwatch.Stop();
+
+                // draw
+                Raylib.BeginMode2D(camera2D);
+                {
+                    foreach (var triangle in triangles)
+                    {
+                        var v0 = Voronoi_Delaunay.Collections.allPoints[triangle.vertex1];
+                        var v1 = Voronoi_Delaunay.Collections.allPoints[triangle.vertex2];
+                        var v2 = Voronoi_Delaunay.Collections.allPoints[triangle.vertex3];
+                        Raylib.DrawTriangleLines(new Vector2((float)v0.x, (float)v0.y), new Vector2((float)v1.x, (float)v1.y), new Vector2((float)v2.x, (float)v2.y), color);
+                    }
+                }
+                Raylib.EndMode2D();
+                Raylib.DrawText($"Voronoi-Delaunay:{stopwatch.Elapsed.TotalMilliseconds}", fontPositionX, fontPositionY, fontSize, color);
             }
 
             void test_QuickHull3DBiofluidix(Camera2D camera2D, int fontPositionX, int fontPositionY, int fontSize, List<Vector2> inPoints, Color color)
