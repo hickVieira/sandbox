@@ -77,6 +77,7 @@ namespace Sandbox
                     System.Diagnostics.Stopwatch stopwatchLibTessDotNet = new System.Diagnostics.Stopwatch();
                     System.Diagnostics.Stopwatch stopwatchQuickHull3D_biofluidix = new System.Diagnostics.Stopwatch();
                     System.Diagnostics.Stopwatch stopwatchQuickHull3D_oskar = new System.Diagnostics.Stopwatch();
+                    System.Diagnostics.Stopwatch stopwatchDelaunay_oskar = new System.Diagnostics.Stopwatch();
 
                     List<decimal2> mydelaunayVertices = null;
                     List<Delaunay.Triangle> mydelaunayTriangles = null;
@@ -96,6 +97,7 @@ namespace Sandbox
                     IList<Poly2Tri_biofluidix.DelaunayTriangle> poly2tribiofluidixTriangles = null;
                     int[] libtessdotnetTriangles = null;
                     LibTessDotNet.ContourVertex[] libtessdotnetVertices = null;
+                    GK.DelaunayTriangulation delaunay_oskar = null;
                     if (points.Count > 2)
                     {
                         {
@@ -274,10 +276,25 @@ namespace Sandbox
                             List<Vector3> outVertices = new List<Vector3>();
                             List<Vector3> outNormals = new List<Vector3>();
                             List<int> outTriangles = new List<int>();
-                            stopwatchQuickHull3D_oskar.Start();
                             GK.ConvexHullCalculator hull = new GK.ConvexHullCalculator();
+                            stopwatchQuickHull3D_oskar.Start();
                             hull.GenerateHull(vertices, false, ref outVertices, ref outTriangles, ref outNormals);
                             stopwatchQuickHull3D_oskar.Stop();
+                        }
+                        {
+                            List<Vector2> vertices = new List<Vector2>();
+                            for (int i = 0; i < points.Count; i++)
+                            {
+                                Vector2 vec = points[i];
+                                if (float.IsNaN(vec.X) || float.IsNaN(vec.Y))
+                                    continue;
+                                vertices.Add(new Vector2(vec.X, vec.Y));
+                            }
+                            GK.DelaunayCalculator delaunayCalculator = new GK.DelaunayCalculator();
+                            delaunay_oskar = new GK.DelaunayTriangulation();
+                            stopwatchDelaunay_oskar.Start();
+                            delaunayCalculator.CalculateTriangulation(vertices, ref delaunay_oskar);
+                            stopwatchDelaunay_oskar.Stop();
                         }
                     }
 
@@ -397,6 +414,16 @@ namespace Sandbox
                                     Raylib.DrawTriangleLines(new Vector2(v0.X, v0.Y), new Vector2(v1.X, v1.Y), new Vector2(v2.X, v2.Y), Color.RAYWHITE);
                                 }
                             }
+                            if (delaunay_oskar != null)
+                            {
+                                for (int i = 0; i < delaunay_oskar.Triangles.Count; i += 3)
+                                {
+                                    Vector2 v0 = delaunay_oskar.Vertices[delaunay_oskar.Triangles[i + 0]];
+                                    Vector2 v1 = delaunay_oskar.Vertices[delaunay_oskar.Triangles[i + 1]];
+                                    Vector2 v2 = delaunay_oskar.Vertices[delaunay_oskar.Triangles[i + 2]];
+                                    Raylib.DrawTriangleLines(v0, v1, v2, Color.SKYBLUE);
+                                }
+                            }
                             Raylib.DrawLine(short.MinValue, 0, short.MaxValue, 0, Color.RED);
                             Raylib.DrawLine(0, short.MinValue, 0, short.MaxValue, Color.GREEN);
                         }
@@ -414,6 +441,7 @@ namespace Sandbox
                         Raylib.DrawText($"LibTessDotNet:{stopwatchLibTessDotNet.Elapsed.TotalMilliseconds}", 12, 220 + 1, 20, Color.RAYWHITE);
                         Raylib.DrawText($"QuickHull3D-biofluidix:{stopwatchQuickHull3D_biofluidix.Elapsed.TotalMilliseconds}", 12, 240 + 1, 20, Color.GOLD);
                         Raylib.DrawText($"QuickHull3D-oskar:{stopwatchQuickHull3D_oskar.Elapsed.TotalMilliseconds}", 12, 260 + 1, 20, Color.MAGENTA);
+                        Raylib.DrawText($"Delaunay-oskar:{stopwatchDelaunay_oskar.Elapsed.TotalMilliseconds}", 12, 280 + 1, 20, Color.SKYBLUE);
                     }
                     Raylib.EndDrawing();
                 }

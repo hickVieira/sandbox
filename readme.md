@@ -34,6 +34,7 @@
 - [LibTessDotNet](https://github.com/speps/LibTessDotNet) not fast, several times slower than modern Poly2Tri
 - [QuickHull3D-biofluidix](https://github.com/BioFluidix/QuickHull3D) really fast - faster than MIConvexHull
 - [QuickHull3D-oskar](https://github.com/OskarSigvardsson/unity-quickhull) slower than biofluidix's cs port - but faster than MIConvexHull
+- [Delaunay-oskar](https://github.com/OskarSigvardsson/unity-delaunay) not fast
 
 Obviously comparing some of the constrained delaunay vs non-constrained delaunay, or even 2D vs 3D vs nD isn't fair - so weight your judgement properly.
 
