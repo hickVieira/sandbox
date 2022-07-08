@@ -42,4 +42,4 @@
 Obviously comparing some of the constrained delaunay vs non-constrained delaunay, or even 2D vs 3D vs nD isn't fair - so weight your judgement properly.
 
 ## License
-MANY EXTERNAL LIBRARIES IN USE (DIFFERING LICENSES) - CHECK THEIR SPECIFIC LICENSES
+FOR EDUCATIONAL PURPOSES ONLY. MANY EXTERNAL LIBRARIES IN USE (DIFFERENT LICENSES). CHECK THEIR SPECIFIC LICENSES.

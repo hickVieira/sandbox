@@ -79,12 +79,12 @@ namespace Sandbox
 
                         Raylib.DrawText($"Points: {_points.Count}", 12, 20, 20, Color.WHITE);
                         // test_myDelaunator(_camera2D, 12, 40 + 1, 20, _points, Color.RED);
-                        test_DelaunatorNet(_camera2D, 12, 60 + 1, 20, _points, Color.GREEN);
-                        test_DelaunatorSharp(_camera2D, 12, 80 + 1, 20, _points, Color.BLUE);
-                        test_DelaunatorCSharp(_camera2D, 12, 100 + 1, 20, _points, Color.GOLD);
+                        // test_DelaunatorNet(_camera2D, 12, 60 + 1, 20, _points, Color.GREEN);
+                        // test_DelaunatorSharp(_camera2D, 12, 80 + 1, 20, _points, Color.BLUE);
+                        // test_DelaunatorCSharp(_camera2D, 12, 100 + 1, 20, _points, Color.GOLD);
                         // test_SHull(_camera2D, 12, 120 + 1, 20, _points, Color.SKYBLUE);
                         // test_MIConvexHull(_camera2D, 12, 140 + 1, 20, _points, Color.BLACK);
-                        // test_Poly2Tri(_camera2D, 12, 160 + 1, 20, _points, Color.YELLOW);
+                        test_Poly2Tri(_camera2D, 12, 160 + 1, 20, _points, Color.YELLOW);
                         // test_Poly2Trics(_camera2D, 12, 180 + 1, 20, _points, Color.PINK);
                         // test_Poly2TriBiofluidix(_camera2D, 12, 200 + 1, 20, _points, Color.BEIGE);
                         // test_LibTessDotNet(_camera2D, 12, 220 + 1, 20, _points, Color.RAYWHITE);
